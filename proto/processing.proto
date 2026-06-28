@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package processing;
+
+// Go パッケージ名の指定 (適宜置き換えてください)
+option go_package = "github.com/roki-hisui/work/spacebase/internal/processing;processingpb";
+
+// ユーザ登録リクエスト
+message RegisterUserRequest {
+  string name = 2;
+  string status = 3;
+  repeated string languages = 4;
+}
+
+// ユーザ登録レスポンス
+message RegisterUserResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// ProcessingUnit gRPC サービス定義
+service ProcessingUnit {
+  // ユーザ登録を処理ユニットに依頼
+  rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
+}

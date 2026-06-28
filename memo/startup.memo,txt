@@ -1,0 +1,152 @@
+---------------------------------------------------------------------
+- varkeyについて
+---------------------------------------------------------------------
+
+# コマンドから操作
+
+# 接続
+valkey-cli
+
+# 全Keyを取得
+valkey-cli KEYS *
+
+# Keyを指定してデータを取得
+valkey-cli GET user:100:profile
+
+---------------------------------------------------------------------
+- Docker
+---------------------------------------------------------------------
+
+# Processing ユニット
+docker build -t spacebase-processing -f cmd/processing/Dockerfile .
+docker-compose up -d processing
+docker-compose stop -d processing
+docker-compose restart processing
+docker-compose logs -f processing
+
+
+# ミドルウェア
+docker build -t spacebase-middleware -f Dockerfile .
+docker-compose up -d middleware
+docker-compose stop middleware
+docker-compose restart middleware
+docker-compose logs -f middleware
+
+
+# 同時
+docker-compose build
+docker-compose up -d
+docker-compose down
+
+# お役立ち
+# イメージを作成した時間を含めて表示
+docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}"
+docker-compose ps                  # コンテナ稼働状況の確認
+docker-compose logs processing     # Processing ユニットのログを見る
+docker-compose logs middleware     # ミドルウェアのログを見る
+docker logs spacebase-processing   # 直接 docker コマンドでログ取得
+docker logs spacebase-middleware
+docker images                       # ローカルイメージ一覧
+docker rmi <image>                  # イメージ削除
+docker system prune                 # 不要なコンテナ・イメージをまとめて削除
+
+
+
+# コンテナの起動状況
+sudo docker ps
+
+# Docker イメージの作成
+sudo docker build -t spacebase-server .
+sudo docker build --no-cache -t spacebase-server .
+
+※ 現在のディレクトリ（プロジェクトルート）に Dockerfile があることを確認してください。
+
+# コンテナの再起動
+sudo docker stop $(sudo docker ps -q --filter ancestor=spacebase-server:latest)
+sudo docker run --rm -d --network host spacebase-server:latest
+
+# アプリ起動
+sudo docker run -d --name spacebase-app \
+  -p 8080:8080 \
+  -e REDIS_HOST=127.0.0.1 \
+  -e REDIS_PORT=6379 \
+  -e APP_PORT=8080 \
+  -e REDIS_TTL=24h \
+  -e VALKEY="dummy-or-secret-key" \
+  spacebase-server:latest
+
+---------------------------------------------------------------------
+- HTTP リクエスト例
+---------------------------------------------------------------------
+
+# ユーザープロファイル取得
+curl -v localhost:8080/profiles/100
+
+# POSTリクエストでユーザープロファイルを作成
+curl -v -X POST -H "Content-Type: application/json" \
+  -d '{"id":100, "name":"Roki", "status":"active", "languages":["Go","Java"]}' \
+  localhost:8080/profiles
+curl -v -X POST -H "Content-Type: application/json" \
+  -d '{"name":"Roki", "status":"active", "languages":["Go","Java"]}' \
+  localhost:8080/profiles
+
+
+---------------------------------------------------------------------
+- メモ
+---------------------------------------------------------------------
+・ 仮想ミドウェアと処理ユニットの通信にgRPCを利用する
+・ 上記構成でユーザプロファイルを確認
+・ 上位環境むけに設定を切り替える
+
+
+---------------------------------------------------------------------
+- システム構成（6/13時点）
+---------------------------------------------------------------------
+
+1. ValKey サーバー（ホスト上で稼働）  
+   - バインドアドレス: 0.0.0.0:6379  
+   - 起動方法: `sudo systemctl start valkey-server`  
+   - 設定ファイル: `/etc/valkey/valkey.conf` の `bind 0.0.0.0 -::1`  
+   - クライアント: `valkey-cli`  
+
+2. Docker Compose 構成（プロジェクトルートの `docker-compose.yml`）  
+   - バージョン指定は省略（ホストネットワークモード使用）  
+   - services:  
+     a. spacebase-processing  
+        - イメージ: `spacebase-processing:latest`  
+        - ビルドコンテキスト: `cmd/processing/Dockerfile`  
+        - ネットワークモード: `host`  
+        - gRPC ポート: ホストの 50051  
+     b. spacebase-middleware  
+        - イメージ: `spacebase-middleware:latest`  
+        - ビルドコンテキスト: `Dockerfile`  
+        - ネットワークモード: `host`  
+        - HTTP ポート: ホストの 8080  
+   - Redis コンテナは削除、ValKey を利用  
+
+3. ミドルウェア（spacebase-middleware）  
+   - Go 言語で実装  
+   - HTTP API `/register` で JSON→gRPC マッピング  
+   - 環境変数:  
+     - `GATEWAY_MODE=sync`  
+     - `PROCESSING_UNIT_ADDR=processing:50051`（ホストモードなので localhost:50051）  
+     - `APP_PORT=8080`  
+
+4. 処理ユニット（spacebase-processing）  
+   - Go 言語で gRPC サーバー実装  
+   - サービス名: `ProcessingUnit`  
+   - RegisterUser メソッドで受信データを ValKey に永続化  
+   - アダプタ: `internal/space/ValKeySpace` を通じて `valkey-cli set/get/keys` を実行  
+
+5. 設定管理  
+   - `config` パッケージで各種設定値を読み込み  
+     - `AppPort()`  
+     - `ProcessingUnitAddr()`  
+     - `RedisTTL()` （ValKey の TTL 値）  
+     - `ValKey()`（接続キーやエンドポイント情報）  
+
+6. ネットワーク  
+   - 全コンテナで Host ネットワークモードを使用し、ホスト上の ValKey サーバーへ直接アクセス  
+   - Docker ブリッジや独自ネットワークは使用せず  
+
+これにより、HTTP→gRPC→ValKey の一連処理が、ローカルおよび Docker コンテナ内から同一ホストの ValKey サーバーへシームレスにアクセスして動作しています。

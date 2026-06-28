@@ -1,0 +1,10 @@
+# Binaries
+processing
+server
+
+# Logs
+*.log
+build.log
+
+# Temporary / CLI leftovers
+-cli ping

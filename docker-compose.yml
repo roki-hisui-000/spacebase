@@ -1,0 +1,18 @@
+#version: "3.8"
+
+services:
+  processing:
+    build:
+      context: .
+      dockerfile: cmd/processing/Dockerfile
+    image: spacebase-processing:latest
+    container_name: spacebase-processing
+    network_mode: "host"
+
+  middleware:
+    build:
+      context: .
+      dockerfile: middleware/Dockerfile
+    image: spacebase-middleware:latest
+    container_name: spacebase-middleware
+    network_mode: "host"

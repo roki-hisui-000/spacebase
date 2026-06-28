@@ -1,0 +1,20 @@
+# Spacebase Project - AI Agent Rules & Skills
+
+## 参照すべきルールファイル
+- アーキテクチャ・設計思想: `docs/rules/architecture.md`
+- フロントエンド・UI規約: `docs/rules/frontend.md`
+- テストコード規約: `docs/rules/testing.md`
+- ローカル環境規約: `docs/rules/local.md`
+
+## 禁則事項
+- `.clinerules`や`docs/`配下のファイルに書き込むことは禁止とする。
+    - 変更が必要な場合はその内容を表示してユーザが手動で反映することを促す。
+
+## 推奨開発・運用コマンド (Makefile)
+開発作業や状態確認には、プロジェクトルートに配置されている `Makefile` のタスクを最優先で利用してください。
+
+- **ビルドと起動**: `make up` または `make build`
+- **停止**: `make down`
+- **ログの監視**: `make logs-middleware` または `make logs-processing`
+- **Valkey内のデータ確認**: `make valkey-keys`
+- **テストの実行**: `make test`
