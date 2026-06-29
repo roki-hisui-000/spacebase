@@ -27,37 +27,21 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Load Rules
-        id: load-rules
+      - name: Get PR Diff
         run: |
-          {
-            echo "clinerules<<EOF"
-            sed -e 's/^/  /' .clinerules 2>/dev/null || echo "（基本ルールファイルなし）"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-          
-          {
-            echo "doc_rules<<EOF"
-            cat docs/rules/*.md 2>/dev/null || echo "（詳細ルールファイルなし）"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          # developブランチからの差分を取得
+          git diff origin/develop...HEAD > diff.txt
 
-      - name: Run Gemini Code Review
-        uses: google-gemini/pr-reviewer-action@v2
-        with:
-          api_key: ${{ secrets.GEMINI_API_KEY }}
-          # 【最新の選択】2026年現在のベストモデル。Pro並みに賢く、Flash価格で爆速です
-          model: 'gemini-3.5-flash'
-          
-          # ★ここが最大のポイント：全ルール（Skills）の自動合体
-          custom_instructions: |
-            あなたは当プロジェクトの極めて優秀なシニアエンジニア兼レビュアーです。
-            提出されたPRのコード差分（diff）を、以下の「開発ルール」に基づいて厳格にレビューしてください。
-            
-            もしルールへの違反や、改善の余地（特にロジック変更に対するC0テストコードの不足など）がある場合は、該当する箇所へ具体的な修正案コードを添えて指摘を行ってください。
-            
-            --- 【1】全体ルール (.clinerules) ---
-            ${{ steps.load-rules.outputs.clinerules }}
-            
-            --- 【2】詳細・専門ルール (docs/rules/*) ---
-            ${{ steps.load-rules.outputs.doc_rules }}
+      - name: Run Gemini Review Script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          node .github/scripts/review.js
+
+      - name: Post Review Comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f review_result.txt ]; then
+            gh pr comment ${{ github.event.pull_request.number }} --body-file review_result.txt
+          fi
