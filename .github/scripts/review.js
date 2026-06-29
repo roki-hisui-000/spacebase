@@ -1,5 +1,8 @@
 const fs = require('fs');
 
+const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+const DEFAULT_GEMINI_MODEL = 'gemini-1.5-flash';
+
 async function run() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -45,9 +48,9 @@ ${diff}
 `;
 
   // 利用可能なモデルの一覧を取得し、自動的に最適なモデルを判定する（堅牢性の担保）
-  let modelName = 'gemini-1.5-flash'; // デフォルトフォールバック
+  let modelName = DEFAULT_GEMINI_MODEL; // デフォルトフォールバック
   try {
-    const modelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+    const modelsUrl = `${GEMINI_API_BASE_URL}/models?key=${apiKey}`;
     const modelsRes = await fetch(modelsUrl);
     if (modelsRes.ok) {
       const modelsData = await modelsRes.json();
@@ -82,7 +85,7 @@ ${diff}
     console.warn("Error while auto-detecting models, using default:", err);
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  const url = `${GEMINI_API_BASE_URL}/models/${modelName}:generateContent?key=${apiKey}`;
   console.log(`Sending review request to Gemini model: ${modelName}`);
   const response = await fetch(url, {
     method: 'POST',
@@ -115,7 +118,11 @@ ${diff}
   console.log("Review generated successfully");
 }
 
-run().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+if (require.main === module) {
+  run().catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+}
+
+module.exports = { run };

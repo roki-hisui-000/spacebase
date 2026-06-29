@@ -27,6 +27,10 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Run Node.js Tests
+        run: |
+          node --test .github/scripts/review.test.js
+
       - name: Get PR Diff
         run: |
           # developブランチからの差分を取得
@@ -45,3 +49,4 @@ jobs:
           if [ -f review_result.txt ]; then
             gh pr comment ${{ github.event.pull_request.number }} --body-file review_result.txt
           fi
+
