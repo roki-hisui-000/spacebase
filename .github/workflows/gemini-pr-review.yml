@@ -1,0 +1,48 @@
+name: Gemini AI PR Reviewer
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+# 同じPRで連続プッシュがあった場合、古いレビューを自動でキャンセルしてAPI料金とActions枠を節約
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 差分（diff）を正確に取得するために全履歴を取得
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Gemini Code Review
+        uses: google-gemini/pr-reviewer-action@v2
+        with:
+          api_key: ${{ secrets.GEMINI_API_KEY }}
+          # 【最新の選択】2026年現在のベストモデル。Pro並みに賢く、Flash価格で爆速です
+          model: 'gemini-3.5-flash'
+          
+          # ★ここが最大のポイント：全ルール（Skills）の自動合体
+          custom_instructions: |
+            あなたは当プロジェクトの極めて優秀なシニアエンジニア兼レビュアーです。
+            提出されたPRのコード差分（diff）を、以下の「開発ルール」に基づいて厳格にレビューしてください。
+            
+            もしルールへの違反や、改善の余地（特にロジック変更に対するC0テストコードの不足など）がある場合は、該当する箇所へ具体的な修正案コードを添えて指摘を行ってください。
+            
+            --- 【1】全体ルール (.clinerules) ---
+            ${{ sed -e 's/^/  /' .clinerules 2>/dev/null || echo "（基本ルールファイルなし）" }}
+            
+            --- 【2】詳細・専門ルール (docs/rules/*) ---
+            ${{ cat docs/rules/*.md 2>/dev/null || echo "（詳細ルールファイルなし）" }}
