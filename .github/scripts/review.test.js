@@ -180,4 +180,49 @@ test.describe('review.js', () => {
     assert.strictEqual(mockExit.mock.calls.length, 1);
     assert.strictEqual(mockExit.mock.calls[0].arguments[0], 1);
   });
+
+  test.it('docs/rules ディレクトリが存在しない場合、docRules が空になる', async (t) => {
+    const mockExistsSync = t.mock.method(fs, 'existsSync', (path) => {
+      if (path === 'diff.txt') return true;
+      if (path === '.clinerules') return true;
+      if (path === 'docs/rules') return false; // docs/rulesが存在しない
+      return true;
+    });
+    const mockReadFileSync = t.mock.method(fs, 'readFileSync', (path) => {
+      if (path === 'diff.txt') return 'dummy diff';
+      if (path === '.clinerules') return 'dummy rules';
+      return '';
+    });
+    
+    // fetch のモック
+    const mockFetch = t.mock.method(global, 'fetch', async (url, options) => {
+      if (url.includes('/models?')) {
+        return {
+          ok: true,
+          json: async () => ({ models: [{ name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] }] })
+        };
+      } else {
+        const body = JSON.parse(options.body);
+        const prompt = body.contents[0].parts[0].text;
+        // プロンプトにdocs/rulesに関する内容が含まれていないことをアサート
+        assert.ok(!prompt.includes('--- architecture.md ---'), 'Prompt should not contain docRules content');
+        return {
+          ok: true,
+          json: async () => ({
+            candidates: [{ content: { parts: [{ text: 'Mocked Gemini Review Comment with no docRules' }] } }]
+          })
+        };
+      }
+    });
+
+    const mockWriteFileSync = t.mock.method(fs, 'writeFileSync', () => {});
+    const mockConsoleLog = t.mock.method(console, 'log', () => {});
+
+    await run();
+
+    assert.strictEqual(mockExistsSync.mock.calls.some(c => c.arguments[0] === 'docs/rules'), true);
+    assert.strictEqual(mockWriteFileSync.mock.calls.length, 1);
+    assert.strictEqual(mockWriteFileSync.mock.calls[0].arguments[1], 'Mocked Gemini Review Comment with no docRules');
+    assert.strictEqual(mockConsoleLog.mock.calls.some(c => c.arguments[0] === "Review generated successfully"), true);
+  });
 });
