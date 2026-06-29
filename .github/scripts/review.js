@@ -28,6 +28,28 @@ async function run() {
     return;
   }
 
+  // 変更されたファイルの一覧を抽出
+  const changedFiles = [];
+  const fileRegex = /^diff --git a\/(.+?) b\//gm;
+  let match;
+  while ((match = fileRegex.exec(diff)) !== null) {
+    changedFiles.push(match[1]);
+  }
+
+  // 設定ファイル（.yml, .json）やドキュメントのみの変更の場合は、検証をスキップしてコスト削減
+  const allowedExtensions = ['.yml', '.yaml', '.json', '.md', '.txt'];
+  const isSkipOnly = changedFiles.length > 0 && changedFiles.every(file => {
+    const extIdx = file.lastIndexOf('.');
+    if (extIdx === -1) return false;
+    const ext = file.substring(extIdx).toLowerCase();
+    return allowedExtensions.includes(ext);
+  });
+
+  if (isSkipOnly) {
+    console.log("Review skipped: Config or document changes only");
+    return;
+  }
+
   // ルールファイルの読み込み
   const clinerules = fs.existsSync(CLINE_RULES_FILE_NAME) ? fs.readFileSync(CLINE_RULES_FILE_NAME, 'utf8') : '';
   
