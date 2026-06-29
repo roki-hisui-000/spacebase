@@ -40,6 +40,87 @@ test.describe('review.js', () => {
     assert.strictEqual(mockExit.mock.calls.length, 0); // スキップなので正常終了（exitは呼ばれない）
   });
 
+  test.it('設定ファイルやドキュメントのみの変更の場合、処理をスキップする', async (t) => {
+    const mockExistsSync = t.mock.method(fs, 'existsSync', () => true);
+    const mockReadFileSync = t.mock.method(fs, 'readFileSync', (path) => {
+      if (path === 'diff.txt') {
+        return `diff --git a/config/config.dev.yaml b/config/config.dev.yaml
+index 1234567..abcdefg 100644
+--- a/config/config.dev.yaml
++++ b/config/config.dev.yaml
+@@ -1,3 +1,4 @@
++new_config: true
+diff --git a/docs/rules/pr_review.md b/docs/rules/pr_review.md
+index abcdefg..1234567 100644
+--- a/docs/rules/pr_review.md
++++ b/docs/rules/pr_review.md
+@@ -1,3 +1,4 @@
++new_rule: true`;
+      }
+      return '';
+    });
+    const mockConsoleLog = t.mock.method(console, 'log', () => {});
+    const mockExit = t.mock.method(process, 'exit', () => {});
+
+    const mockFetch = t.mock.method(global, 'fetch', () => {
+      throw new Error('fetch should not be called');
+    });
+
+    await run();
+
+    assert.strictEqual(mockConsoleLog.mock.calls.some(c => c.arguments[0] === "Review skipped: Config or document changes only"), true);
+    assert.strictEqual(mockExit.mock.calls.length, 0);
+  });
+
+  test.it('設定ファイルやドキュメント以外の変更が含まれる場合、処理をスキップしない', async (t) => {
+    const mockExistsSync = t.mock.method(fs, 'existsSync', () => true);
+    const mockReadFileSync = t.mock.method(fs, 'readFileSync', (path) => {
+      if (path === 'diff.txt') {
+        return `diff --git a/config/config.dev.yaml b/config/config.dev.yaml
+index 1234567..abcdefg 100644
+--- a/config/config.dev.yaml
++++ b/config/config.dev.yaml
+@@ -1,3 +1,4 @@
++new_config: true
+diff --git a/main.go b/main.go
+index abcdefg..1234567 100644
+--- a/main.go
++++ b/main.go
+@@ -1,3 +1,4 @@
++new_logic: true`;
+      }
+      return '';
+    });
+    const mockReaddirSync = t.mock.method(fs, 'readdirSync', () => []);
+    const mockWriteFileSync = t.mock.method(fs, 'writeFileSync', () => {});
+    const mockConsoleLog = t.mock.method(console, 'log', () => {});
+
+    let fetchCallCount = 0;
+    const mockFetch = t.mock.method(global, 'fetch', async (url) => {
+      fetchCallCount++;
+      if (fetchCallCount === 1) {
+        return {
+          ok: true,
+          json: async () => ({
+            models: [{ name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] }]
+          })
+        };
+      } else {
+        return {
+          ok: true,
+          json: async () => ({
+            candidates: [{ content: { parts: [{ text: 'Mocked Gemini Review Comment' }] } }]
+          })
+        };
+      }
+    });
+
+    await run();
+
+    assert.strictEqual(mockWriteFileSync.mock.calls.length, 1);
+    assert.strictEqual(mockConsoleLog.mock.calls.some(c => c.arguments[0] === "Review generated successfully"), true);
+  });
+
   test.it('正常にモデルを自動選択してレビューを生成・ファイルに書き込む', async (t) => {
     const mockExistsSync = t.mock.method(fs, 'existsSync', () => true);
     const mockReadFileSync = t.mock.method(fs, 'readFileSync', (path) => {
