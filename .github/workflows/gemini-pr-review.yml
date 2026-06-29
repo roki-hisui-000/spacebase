@@ -27,6 +27,21 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Load Rules
+        id: load-rules
+        run: |
+          {
+            echo "clinerules<<EOF"
+            sed -e 's/^/  /' .clinerules 2>/dev/null || echo "（基本ルールファイルなし）"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          
+          {
+            echo "doc_rules<<EOF"
+            cat docs/rules/*.md 2>/dev/null || echo "（詳細ルールファイルなし）"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Run Gemini Code Review
         uses: google-gemini/pr-reviewer-action@v2
         with:
@@ -42,7 +57,7 @@ jobs:
             もしルールへの違反や、改善の余地（特にロジック変更に対するC0テストコードの不足など）がある場合は、該当する箇所へ具体的な修正案コードを添えて指摘を行ってください。
             
             --- 【1】全体ルール (.clinerules) ---
-            ${{ sed -e 's/^/  /' .clinerules 2>/dev/null || echo "（基本ルールファイルなし）" }}
+            ${{ steps.load-rules.outputs.clinerules }}
             
             --- 【2】詳細・専門ルール (docs/rules/*) ---
-            ${{ cat docs/rules/*.md 2>/dev/null || echo "（詳細ルールファイルなし）" }}
+            ${{ steps.load-rules.outputs.doc_rules }}
