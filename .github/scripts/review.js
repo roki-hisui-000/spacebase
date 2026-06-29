@@ -8,6 +8,7 @@ async function run() {
   if (!apiKey) {
     console.error("GEMINI_API_KEY is not set");
     process.exit(1);
+    return;
   }
 
   // 差分ファイルの読み込み
@@ -33,7 +34,7 @@ async function run() {
   }
 
   const prompt = `あなたは当プロジェクトの極めて優秀なシニアエンジニア兼レビュアーです。
-提出されたPRのコード差分（diff）を、以下の「開発ルール」に基づいて厳格にレビューしてください。
+提出されたPR of diff）を、以下の「開発ルール」に基づいて厳格にレビューしてください。
 
 もしルールへの違反や、改善の余地がある場合は、該当する箇所へ具体的な修正案コードを添えて指摘を行ってください。
 
@@ -105,6 +106,7 @@ ${diff}
     const errText = await response.text();
     console.error(`Gemini API error for model ${modelName}: ${response.status}`, errText);
     process.exit(1);
+    return;
   }
 
   const data = await response.json();
@@ -112,6 +114,7 @@ ${diff}
   if (!reviewResult) {
     console.error("Invalid response from Gemini API", JSON.stringify(data));
     process.exit(1);
+    return;
   }
 
   fs.writeFileSync('review_result.txt', reviewResult);

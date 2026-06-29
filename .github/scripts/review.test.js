@@ -87,4 +87,97 @@ test.describe('review.js', () => {
     assert.strictEqual(mockWriteFileSync.mock.calls[0].arguments[1], 'Mocked Gemini Review Comment');
     assert.strictEqual(mockConsoleLog.mock.calls.some(c => c.arguments[0] === "Review generated successfully"), true);
   });
+
+  test.it('models API呼び出しが失敗した場合、警告ログを出力しデフォルトモデルを使用する', async (t) => {
+    const mockExistsSync = t.mock.method(fs, 'existsSync', () => true);
+    const mockReadFileSync = t.mock.method(fs, 'readFileSync', () => 'dummy content');
+    const mockWriteFileSync = t.mock.method(fs, 'writeFileSync', () => {});
+    const mockConsoleWarn = t.mock.method(console, 'warn', () => {});
+    const mockConsoleLog = t.mock.method(console, 'log', () => {});
+
+    let fetchCallCount = 0;
+    const mockFetch = t.mock.method(global, 'fetch', async (url) => {
+      fetchCallCount++;
+      if (fetchCallCount === 1) {
+        // models API のレスポンスを失敗させる
+        return { ok: false, status: 500, text: async () => 'Internal Server Error' };
+      } else {
+        // generateContent API のレスポンス（デフォルトモデルが使われることを想定）
+        assert.ok(url.includes('gemini-1.5-flash'), 'Should use default model if models API fails');
+        return {
+          ok: true,
+          json: async () => ({
+            candidates: [{ content: { parts: [{ text: 'Mocked Gemini Review Comment with default model' }] } }]
+          })
+        };
+      }
+    });
+
+    await run();
+
+    assert.strictEqual(mockConsoleWarn.mock.calls.length, 1);
+    assert.match(mockConsoleWarn.mock.calls[0].arguments[0], /Failed to list models/);
+    assert.strictEqual(mockWriteFileSync.mock.calls[0].arguments[1], 'Mocked Gemini Review Comment with default model');
+    assert.strictEqual(mockConsoleLog.mock.calls.some(c => c.arguments[0].includes("Sending review request to Gemini model: gemini-1.5-flash")), true);
+  });
+
+  test.it('generateContent API呼び出しが失敗した場合、エラーを出力して終了する', async (t) => {
+    const mockExistsSync = t.mock.method(fs, 'existsSync', () => true);
+    const mockReadFileSync = t.mock.method(fs, 'readFileSync', () => 'dummy content');
+    const mockConsoleError = t.mock.method(console, 'error', () => {});
+    const mockExit = t.mock.method(process, 'exit', () => {});
+    t.mock.method(console, 'log', () => {}); // 不要なログ出力を抑制
+
+    let fetchCallCount = 0;
+    const mockFetch = t.mock.method(global, 'fetch', async (url) => {
+      fetchCallCount++;
+      if (fetchCallCount === 1) {
+        // models API のレスポンス (成功)
+        return {
+          ok: true,
+          json: async () => ({ models: [{ name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] }] })
+        };
+      } else {
+        // generateContent API のレスポンスを失敗させる
+        return { ok: false, status: 400, text: async () => 'Bad Request' };
+      }
+    });
+
+    await run();
+
+    assert.strictEqual(mockConsoleError.mock.calls.length, 1);
+    assert.match(mockConsoleError.mock.calls[0].arguments[0], /Gemini API error/);
+    assert.strictEqual(mockExit.mock.calls.length, 1);
+    assert.strictEqual(mockExit.mock.calls[0].arguments[0], 1);
+  });
+
+  test.it('generateContent APIのレスポンス形式が不正な場合、エラーを出力して終了する', async (t) => {
+    const mockExistsSync = t.mock.method(fs, 'existsSync', () => true);
+    const mockReadFileSync = t.mock.method(fs, 'readFileSync', () => 'dummy content');
+    const mockConsoleError = t.mock.method(console, 'error', () => {});
+    const mockExit = t.mock.method(process, 'exit', () => {});
+    t.mock.method(console, 'log', () => {}); // 不要なログ出力を抑制
+
+    let fetchCallCount = 0;
+    const mockFetch = t.mock.method(global, 'fetch', async (url) => {
+      fetchCallCount++;
+      if (fetchCallCount === 1) {
+        // models API のレスポンス (成功)
+        return {
+          ok: true,
+          json: async () => ({ models: [{ name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] }] })
+        };
+      } else {
+        // generateContent API のレスポンスが不正 (candidatesがない)
+        return { ok: true, json: async () => ({ /* 空オブジェクトまたは不正な構造 */ }) };
+      }
+    });
+
+    await run();
+
+    assert.strictEqual(mockConsoleError.mock.calls.length, 1);
+    assert.match(mockConsoleError.mock.calls[0].arguments[0], /Invalid response from Gemini API/);
+    assert.strictEqual(mockExit.mock.calls.length, 1);
+    assert.strictEqual(mockExit.mock.calls[0].arguments[0], 1);
+  });
 });
