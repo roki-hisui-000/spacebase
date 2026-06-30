@@ -1,24 +1,19 @@
 # ローカル環境規約
 
-## introduction
-- ここにはローカル環境に関して記述しています
-
-
 ## 構成
-- **アーキテクチャ・設計思想**に記載されているとおりスペースベースアーキテクチャにもとづいたシステム構成となっています。
-　- **Processing Unit (処理ユニット)**:、**Processing Unit (処理ユニット)**、**Valkey (永続化・キャッシュ)**が存在する。
-  - **Processing Unit (処理ユニット)**:、**Processing Unit (処理ユニット)**については**Docker**で動かす
-  - **Valkey (永続化・キャッシュ)**についてはローカル環境で既に起動している前提とする
+- **Middleware**、**Processing Unit**：Dockerコンテナで動作。
+- **Valkey**：ローカル環境で起動している前提とする。
 
+## ローカル環境操作（Makefile優先）
+ローカル環境の操作は、プロジェクトルートにある `Makefile` のコマンドを最優先で使用すること。
+- **ビルド・起動**: `make up` または `make build`
+- **停止**: `make down`
+- **ログ確認**: `make logs-middleware` または `make logs-processing`
+- **テスト実行**: `make test`
 
-## ローカル環境構築
-- ユーザからローカル環境の起動指示があった場合、以下の手順を行う（コマンドを実行する）
-    - 実行手順1〜4に記載されたコマンドは実行しないこと。
-- 実行手順
-    - 1. 既存のDocker停止：`sudo docker compose down`
-    - 2. イメージビルド：`sudo docker compose build`
-        - Dockerファイルにテスト実行を定義しています。テストでNGとなった場合は詳細を出力して中断する
-    - 3. イメージデプロイ：`sudo docker compose up -d`
-    - 4. イメージ実行確認：`sudo docker ps`
-        - **pacebase-processing:latest**と**pacebase-processing:latest**のIMAGEが起動していることを確認する
-- 1〜4の実行中で予期せぬエラーが発生した場合は中断してエラーの内容を伝えること
+## docker compose を直接使用する場合の起動手順
+ユーザーから明示的な指示がある場合のみ、以下の手順を実行する。
+1. **停止**: `docker compose down`
+2. **ビルド**: `docker compose build` （テスト失敗時は中断）
+3. **起動**: `docker compose up -d`
+4. **起動確認**: `docker ps` で `spacebase-middleware:latest` と `spacebase-processing:latest` が起動しているか確認。
