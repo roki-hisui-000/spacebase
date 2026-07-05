@@ -135,8 +135,9 @@
         // ページロード時にデータ取得
         window.addEventListener('DOMContentLoaded', () => fetchProfiles(true));
 
-        // 60秒ごとに自動同期
-        setInterval(() => fetchProfiles(false), 60000);
+        // 自動同期
+        const AUTO_REFRESH_INTERVAL_MS = 60000;
+        setInterval(() => fetchProfiles(false), AUTO_REFRESH_INTERVAL_MS);
     </script>
 </body>
 </html>

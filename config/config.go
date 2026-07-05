@@ -115,3 +115,13 @@ func AdminPass() string {
 	}
 	return getEnv("ADMIN_PASS", "admin_pass")
 }
+
+// SetTestConfig is a helper for testing to temporarily modify configuration.
+func SetTestConfig(testCfg Config) {
+	cfg = testCfg
+}
+
+// GetTestConfig is a helper for testing to get current configuration.
+func GetTestConfig() Config {
+	return cfg
+}
