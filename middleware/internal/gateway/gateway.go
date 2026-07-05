@@ -65,34 +65,6 @@ func (g *SyncGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.handleAPI(w, r)
 		return
 	}
-
-	// 2. それ以外の場合は画面（静的ファイル）配信として処理
-	g.handleWebUI(w, r)
-}
-
-// handleAPI は各種バックエンドAPIの呼び出しを処理します
-func (g *SyncGateway) handleAPI(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	switch r.URL.Path {
-	case "/api/register":
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		g.handleRegister(w, r, ctx)
-
-	case "/api/profiles":
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		g.handleGetProfiles(w, r, ctx)
-
-	default:
-		http.Error(w, "Not found", http.StatusNotFound)
-	}
 }
 
 // handleRegister は JSON パースを行い、gRPC RegisterUser へフォワードします
@@ -250,10 +222,12 @@ func (g *SyncGateway) handleAdminWebUI(w http.ResponseWriter, r *http.Request) {
 
 	var template string
 	switch path {
-	case "/admin/profiles":
-		template = "web/admin_profiles.html"
-	case "/admin/profiles/regist":
-		template = "web/admin_regist.html"
+	case "/admin", "/admin/":
+		template = "web/admin/index.html" // adminサブディレクトリ内のindex
+	case "/admin/profiles", "/admin/profiles/":
+		template = "web/admin/profiles.html"
+	case "/admin/profiles/regist", "/admin/profiles/regist/":
+		template = "web/admin/regist.html"
 	default:
 		// デフォルトは admin.html (topページ)
 		template = "web/admin.html"
