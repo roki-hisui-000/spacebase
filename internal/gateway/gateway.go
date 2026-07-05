@@ -254,8 +254,6 @@ func (g *SyncGateway) handleAdminWebUI(w http.ResponseWriter, r *http.Request) {
 		template = "web/admin_profiles.html"
 	case "/admin/profiles/regist":
 		template = "web/admin_regist.html"
-	case "/admin":
-		template = "web/admin.html"
 	default:
 		// デフォルトは admin.html (topページ)
 		template = "web/admin.html"
