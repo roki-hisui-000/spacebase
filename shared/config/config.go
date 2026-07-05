@@ -17,6 +17,8 @@ type Config struct {
 	AppPort   string `json:"app_port"`
 	RedisTTL  string `json:"redis_ttl"`
 	ValKey    string `json:"valkey"`
+	AdminUser string `json:"admin_user"`
+	AdminPass string `json:"admin_pass"`
 }
 
 var cfg Config
@@ -96,4 +98,20 @@ func ValKey() string {
 		return cfg.ValKey
 	}
 	return getEnv("VALKEY", "")
+}
+
+// AdminUser returns admin username
+func AdminUser() string {
+	if cfg.AdminUser != "" {
+		return cfg.AdminUser
+	}
+	return getEnv("ADMIN_USER", "admin")
+}
+
+// AdminPass returns admin password
+func AdminPass() string {
+	if cfg.AdminPass != "" {
+		return cfg.AdminPass
+	}
+	return getEnv("ADMIN_PASS", "admin_pass")
 }

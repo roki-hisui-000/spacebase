@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spacebase - 管理画面 (登録)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <!-- ヘッダー -->
+    <header class="bg-indigo-600 text-white shadow-lg h-16 flex items-center justify-between px-6 shrink-0">
+        <span class="font-bold text-xl tracking-wider">🚀 Spacebase Admin Portal</span>
+        <div class="text-sm font-semibold">Logged in as: Admin</div>
+    </header>
+
+    <!-- メインレイアウト -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- 左メニュー (サイドバー) -->
+        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0">
+            <nav class="flex-1 p-4 space-y-2">
+                <a href="/admin/profiles" class="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+                    <span class="mr-3">👤</span>ユーザープロファイル一覧
+                </a>
+                <a href="/admin/profiles/regist" class="flex items-center px-4 py-2 text-gray-700 bg-indigo-50 rounded-lg font-medium">
+                    <span class="mr-3">📝</span>新規ユーザー登録
+                </a>
+                <hr class="my-4 border-gray-200">
+                <a href="/" class="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+                    <span class="mr-3">⬅️</span>ポータルへ戻る
+                </a>
+            </nav>
+        </aside>
+
+        <!-- 中央コンテンツ (登録フォーム) -->
+        <main class="flex-1 bg-gray-50 p-8 overflow-y-auto">
+            <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">新規ユーザー登録</h2>
+                
+                <form id="registerForm" class="space-y-6">
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700">メールアドレス</label>
+                        <input type="email" id="email" name="email" required
+                            class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700">ステータス</label>
+                        <select id="status" name="status"
+                            class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="languages" class="block text-sm font-medium text-gray-700">プログラミング言語 (カンマ区切り)</label>
+                        <input type="text" id="languages" name="languages" placeholder="Go, Java, TypeScript" required
+                            class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+
+                    <div>
+                        <button type="submit"
+                            class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150">
+                            スペースに登録
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- Snackbar -->
+    <div id="snackbar" class="fixed bottom-6 right-6 z-50 hidden max-w-md text-white px-8 py-5 rounded-xl shadow-2xl flex items-center justify-between space-x-6 transition-all duration-300">
+        <span id="snackbarMessage" class="text-lg font-bold"></span>
+        <button onclick="hideSnackbar()" class="text-white hover:text-gray-200 focus:outline-none">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+
+    <script>
+        let snackbarTimeout;
+
+        function showSnackbar(message, isError = false) {
+            const snackbar = document.getElementById('snackbar');
+            const snackbarMessage = document.getElementById('snackbarMessage');
+            
+            if (isError) {
+                snackbar.className = "fixed bottom-6 right-6 z-50 max-w-md bg-red-600 text-white px-8 py-5 rounded-xl shadow-2xl flex items-center justify-between space-x-6 transition-all duration-300";
+            } else {
+                snackbar.className = "fixed bottom-6 right-6 z-50 max-w-md bg-green-600 text-white px-8 py-5 rounded-xl shadow-2xl flex items-center justify-between space-x-6 transition-all duration-300";
+            }
+            
+            snackbarMessage.innerText = message;
+            snackbar.classList.remove('hidden');
+            
+            if (snackbarTimeout) {
+                clearTimeout(snackbarTimeout);
+            }
+            
+            snackbarTimeout = setTimeout(() => {
+                hideSnackbar();
+            }, 5000);
+        }
+
+        function hideSnackbar() {
+            const snackbar = document.getElementById('snackbar');
+            snackbar.classList.add('hidden');
+        }
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const status = document.getElementById('status').value;
+            const languagesInput = document.getElementById('languages').value;
+            const languages = languagesInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, status, languages })
+                });
+
+                if (response.ok) {
+                    const text = await response.text();
+                    showSnackbar(`成功: ${text}`, false);
+                    document.getElementById('registerForm').reset();
+                } else if (response.status === 409) {
+                    const text = await response.text();
+                    showSnackbar(`エラー: ${text}`, true);
+                } else {
+                    showSnackbar(`エラー: 予期せぬエラーが発生しました。`, true);
+                }
+            } catch (err) {
+                showSnackbar(`エラー: 予期せぬエラーが発生しました。`, true);
+            }
+        });
+    </script>
+</body>
+</html>
