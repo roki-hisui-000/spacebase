@@ -5,10 +5,6 @@
 - フロントエンド・UI規約: `docs/rules/frontend.md`
 - テストコード規約: `docs/rules/testing.md`
 - ローカル環境規約: `docs/rules/local.md`
-- Git・GitHub規約: `docs/rules/github.md`
-- PRレビュー規約: `docs/rules/pr_review.md`
-    - PRのレビュー時に参照する規約
-    - 開発時に参照は不要
 
 ## 禁則事項
 - `.clinerules`や`docs/`配下のファイルに書き込むことは禁止とする。

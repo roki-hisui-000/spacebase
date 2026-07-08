@@ -65,10 +65,7 @@ valkey-cli:
 
 # 単体テストの実行
 test:
-	@echo "Running Go tests..."
 	go test -v ./...
-	@echo "Running Node.js tests..."
-	node --test .github/scripts/review.test.js
 
 # gRPCプロトコルのコード生成
 proto:

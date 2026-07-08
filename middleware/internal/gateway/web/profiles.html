@@ -35,6 +35,7 @@
                     </tr>
                 </thead>
                 <tbody id="profilesTableBody" class="text-gray-600 text-sm">
+                    <!-- JavaScriptで動的に行を追加 -->
                     <tr id="loadingRow">
                         <td colspan="3" class="px-6 py-4 text-center text-gray-500">データを読み込み中...</td>
                     </tr>
@@ -45,47 +46,80 @@
 
     <script>
         async function fetchProfiles(showLoading = true) {
-            const tableBody = document.getElementById('profilesTableBody');
-            const loadingRow = document.getElementById('loadingRow');
-
+            const tbody = document.getElementById('profilesTableBody');
             if (showLoading) {
-                loadingRow.style.display = 'table-row';
+                tbody.innerHTML = '<tr id="loadingRow"><td colspan="3" class="px-6 py-4 text-center text-gray-500">データを読み込み中...</td></tr>';
             }
 
             try {
                 const response = await fetch('/api/profiles');
-                const profiles = await response.json();
-
-                tableBody.innerHTML = ''; // 既存の行をクリア
-
-                if (profiles.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">登録ユーザーはいません。</td></tr>`;
-                } else {
-                    profiles.forEach(profile => {
-                        const row = tableBody.insertRow();
-                        row.className = "border-b border-gray-200 hover:bg-gray-50";
-                        row.insertCell().innerHTML = `<div class="px-6 py-4">${profile.email}</div>`;
-                        row.insertCell().innerHTML = `<div class="px-6 py-4">${profile.status}</div>`;
-                        row.insertCell().innerHTML = `<div class="px-6 py-4">${profile.languages ? profile.languages.join(', ') : '-'}</div>`;
-                    });
+                if (!response.ok) {
+                    throw new Error(`エラーが発生しました: ${response.statusText}`);
                 }
-            } catch (error) {
-                console.error('Error fetching profiles:', error);
-                tableBody.innerHTML = `<tr><td colspan="3" class="px-6 py-4 text-center text-red-500">プロファイルの取得に失敗しました。</td></tr>`;
-            } finally {
-                loadingRow.style.display = 'none';
+                const profiles = await response.json();
+                
+                tbody.innerHTML = '';
+                if (!profiles || profiles.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">登録されているユーザーはいません。</td></tr>';
+                    return;
+                }
+
+                profiles.forEach(profile => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b hover:bg-gray-50';
+
+                    const nameTd = document.createElement('td');
+                    nameTd.className = 'px-6 py-4 font-medium text-gray-900';
+                    nameTd.innerText = profile.email || '';
+
+                    const statusTd = document.createElement('td');
+                    statusTd.className = 'px-6 py-4';
+                    const statusSpan = document.createElement('span');
+                    statusSpan.className = getStatusBadgeClass(profile.status);
+                    statusSpan.innerText = profile.status || 'unknown';
+                    statusTd.appendChild(statusSpan);
+
+                    const langTd = document.createElement('td');
+                    langTd.className = 'px-6 py-4';
+                    const languages = profile.languages || [];
+                    languages.forEach(lang => {
+                        const langSpan = document.createElement('span');
+                        langSpan.className = 'inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mr-1';
+                        langSpan.innerText = lang;
+                        langTd.appendChild(langSpan);
+                    });
+
+                    tr.appendChild(nameTd);
+                    tr.appendChild(statusTd);
+                    tr.appendChild(langTd);
+                    tbody.appendChild(tr);
+                });
+
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-4 text-center text-red-500">データの読み込みに失敗しました: ${err.message}</td></tr>`;
+            }
+        }
+
+        function getStatusBadgeClass(status) {
+            switch(status ? status.toLowerCase() : '') {
+                case 'active':
+                    return 'px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800';
+                case 'inactive':
+                    return 'px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800';
+                case 'pending':
+                    return 'px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800';
+                default:
+                    return 'px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800';
             }
         }
 
         document.getElementById('refreshBtn').addEventListener('click', () => fetchProfiles(true));
-
+        
         // ページロード時にデータ取得
         window.addEventListener('DOMContentLoaded', () => fetchProfiles(true));
 
-        // 自動同期 (1分)
-        const AUTO_REFRESH_INTERVAL_MINUTES = 1;
-        const AUTO_REFRESH_INTERVAL_MS = AUTO_REFRESH_INTERVAL_MINUTES * 60 * 1000;
-        setInterval(() => fetchProfiles(false), AUTO_REFRESH_INTERVAL_MS);
+        // 【リアルタイム自動同期】60秒ごとにバックグラウンドでデータを自動再取得（リロードなしで反映、バックグラウンド更新時はローディングを非表示にしてチラつきを防止）
+        setInterval(() => fetchProfiles(false), 60000);
     </script>
 </body>
 </html>

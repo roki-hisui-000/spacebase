@@ -3,63 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spacebase - 管理画面 (一覧)</title>
+    <title>Spacebase - ユーザー一覧</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
-    <!-- ヘッダー -->
-    <header class="bg-indigo-600 text-white shadow-lg h-16 flex items-center justify-between px-6 shrink-0">
-        <span class="font-bold text-xl tracking-wider">🚀 Spacebase Admin Portal</span>
-        <div class="text-sm font-semibold">Logged in as: Admin</div>
-    </header>
-
-    <!-- メインレイアウト -->
-    <div class="flex flex-1 overflow-hidden">
-        <!-- 左メニュー (サイドバー) -->
-        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0">
-            <nav class="flex-1 p-4 space-y-2">
-                <a href="/admin/profiles" class="flex items-center px-4 py-2 text-gray-700 bg-indigo-50 rounded-lg font-medium">
-                    <span class="mr-3">👤</span>ユーザープロファイル一覧
-                </a>
-                <a href="/admin/profiles/regist" class="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
-                    <span class="mr-3">📝</span>新規ユーザー登録
-                </a>
-                <hr class="my-4 border-gray-200">
-                <a href="/" class="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
-                    <span class="mr-3">⬅️</span>ポータルへ戻る
-                </a>
-            </nav>
-        </aside>
-
-        <!-- 中央コンテンツ (ユーザー一覧) -->
-        <main class="flex-1 bg-gray-50 p-8 overflow-y-auto">
-            <div class="bg-white rounded-xl shadow-md p-8">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">ユーザープロファイル一覧</h2>
-                    <button id="refreshBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-indigo-700 transition">
-                        更新
-                    </button>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="min-w-full table-auto border-collapse">
-                        <thead>
-                            <tr class="bg-gray-100 text-gray-700 text-left text-sm uppercase font-semibold">
-                                <th class="px-6 py-3 border-b">メールアドレス</th>
-                                <th class="px-6 py-3 border-b">ステータス</th>
-                                <th class="px-6 py-3 border-b">プログラミング言語</th>
-                            </tr>
-                        </thead>
-                        <tbody id="profilesTableBody" class="text-gray-600 text-sm">
-                            <tr id="loadingRow">
-                                <td colspan="3" class="px-6 py-4 text-center text-gray-500">データを読み込み中...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-indigo-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <span class="font-bold text-xl tracking-wider">🚀 Spacebase Portal</span>
+            <div class="space-x-4">
+                <a href="/" class="hover:text-indigo-200 pb-1">ユーザー登録</a>
+                <a href="/profiles" class="hover:text-indigo-200 border-b-2 border-white pb-1 font-semibold">ユーザー一覧</a>
             </div>
-        </main>
-    </div>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto mt-12 p-8 bg-white rounded-xl shadow-md">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">ユーザープロファイル一覧</h2>
+            <button id="refreshBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-indigo-700 transition">
+                更新
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full table-auto border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-700 text-left text-sm uppercase font-semibold">
+                        <th class="px-6 py-3 border-b">メールアドレス</th>
+                        <th class="px-6 py-3 border-b">ステータス</th>
+                        <th class="px-6 py-3 border-b">プログラミング言語</th>
+                    </tr>
+                </thead>
+                <tbody id="profilesTableBody" class="text-gray-600 text-sm">
+                    <!-- JavaScriptで動的に行を追加 -->
+                    <tr id="loadingRow">
+                        <td colspan="3" class="px-6 py-4 text-center text-gray-500">データを読み込み中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
 
     <script>
         async function fetchProfiles(showLoading = true) {
@@ -135,10 +118,8 @@
         // ページロード時にデータ取得
         window.addEventListener('DOMContentLoaded', () => fetchProfiles(true));
 
-        // 自動同期 (1分)
-        const AUTO_REFRESH_INTERVAL_MINUTES = 1;
-        const AUTO_REFRESH_INTERVAL_MS = AUTO_REFRESH_INTERVAL_MINUTES * 60 * 1000;
-        setInterval(() => fetchProfiles(false), AUTO_REFRESH_INTERVAL_MS);
+        // 【リアルタイム自動同期】60秒ごとにバックグラウンドでデータを自動再取得（リロードなしで反映、バックグラウンド更新時はローディングを非表示にしてチラつきを防止）
+        setInterval(() => fetchProfiles(false), 60000);
     </script>
 </body>
 </html>
