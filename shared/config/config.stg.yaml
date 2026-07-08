@@ -1,5 +1,0 @@
-redis_host: "<TODO_REDIS_HOST>"
-redis_port: "<TODO_REDIS_PORT>"
-app_port: "<TODO_APP_PORT>"
-redis_ttl: "<TODO_REDIS_TTL>"
-valkey: "<TODO_VALKEY>"

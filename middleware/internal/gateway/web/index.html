@@ -65,6 +65,7 @@
 
     <script>
         let snackbarTimeout;
+        const SNACKBAR_DISPLAY_DURATION_MS = 5000; // 定数化
 
         function showSnackbar(message, isError = false) {
             const snackbar = document.getElementById('snackbar');
@@ -85,7 +86,7 @@
             
             snackbarTimeout = setTimeout(() => {
                 hideSnackbar();
-            }, 5000);
+            }, SNACKBAR_DISPLAY_DURATION_MS);
         }
 
         function hideSnackbar() {

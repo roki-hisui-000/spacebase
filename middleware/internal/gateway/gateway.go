@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/roki-hisui/work/spacebase/config"
 	processingpb "github.com/roki-hisui/work/spacebase/internal/processing"
 	"github.com/roki-hisui/work/spacebase/internal/space"
 	"github.com/roki-hisui/work/spacebase/pkg/model"
@@ -47,38 +48,22 @@ func NewSyncGateway(sp space.Space) (*SyncGateway, error) {
 
 // ServeHTTP はリクエストのURLによってAPI処理と画面（WebUI）配信にルーティングします
 func (g *SyncGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// 0. パスが "/admin" で始まる場合はBasic認証をかける
+	if strings.HasPrefix(r.URL.Path, "/admin") {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != config.AdminUser() || password != config.AdminPass() {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Admin Area"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		g.handleAdminWebUI(w, r)
+		return
+	}
+
 	// 1. パスが "/api" で始まる場合はAPIリクエストとして処理
 	if strings.HasPrefix(r.URL.Path, "/api") {
 		g.handleAPI(w, r)
 		return
-	}
-
-	// 2. それ以外の場合は画面（静的ファイル）配信として処理
-	g.handleWebUI(w, r)
-}
-
-// handleAPI は各種バックエンドAPIの呼び出しを処理します
-func (g *SyncGateway) handleAPI(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	switch r.URL.Path {
-	case "/api/register":
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		g.handleRegister(w, r, ctx)
-
-	case "/api/profiles":
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		g.handleGetProfiles(w, r, ctx)
-
-	default:
-		http.Error(w, "Not found", http.StatusNotFound)
 	}
 }
 
@@ -228,6 +213,32 @@ func (g *SyncGateway) handleWebUI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", contentType)
+	w.Write(data)
+}
+
+// handleAdminWebUI は管理画面（静的HTML）を返却します
+func (g *SyncGateway) handleAdminWebUI(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimSuffix(r.URL.Path, "/")
+
+	var template string
+	switch path {
+	case "/admin", "/admin/":
+		template = "web/admin/index.html" // adminサブディレクトリ内のindex
+	case "/admin/profiles", "/admin/profiles/":
+		template = "web/admin/profiles.html"
+	case "/admin/profiles/regist", "/admin/profiles/regist/":
+		template = "web/admin/regist.html"
+	default:
+		// デフォルトは admin.html (topページ)
+		template = "web/admin.html"
+	}
+
+	data, err := webFS.ReadFile(template)
+	if err != nil {
+		http.Error(w, "Admin template not found", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(data)
 }
 
