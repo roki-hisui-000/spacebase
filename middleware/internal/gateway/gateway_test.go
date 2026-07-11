@@ -36,9 +36,10 @@ func TestServeHTTPAdminAuthAndRouting(t *testing.T) {
 		AdminPass: "testpass",
 	})
 
-	gateway, err := NewSyncGateway(&MockSpace{})
-	if err != nil {
-		t.Fatalf("Failed to create SyncGateway: %v", err)
+	gateway := &SyncGateway{
+		client: nil,
+		addr:   "localhost:50051",
+		sp:     &MockSpace{},
 	}
 
 	tests := []struct {
@@ -120,9 +121,10 @@ func TestServeHTTPAdminAuthAndRouting(t *testing.T) {
 }
 
 func TestHandleAdminWebUI_Fallback(t *testing.T) {
-	gateway, err := NewSyncGateway(&MockSpace{})
-	if err != nil {
-		t.Fatalf("Failed to create SyncGateway: %v", err)
+	gateway := &SyncGateway{
+		client: nil,
+		addr:   "localhost:50051",
+		sp:     &MockSpace{},
 	}
 
 	reqNotFound := httptest.NewRequest("GET", "/admin/path/not/defined/in/switch", nil)
