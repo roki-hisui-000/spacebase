@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/roki-hisui/work/spacebase/config"
 	processingpb "github.com/roki-hisui/work/spacebase/internal/processing"
 	"github.com/roki-hisui/work/spacebase/internal/space"
 	"github.com/roki-hisui/work/spacebase/pkg/model"
@@ -47,13 +48,25 @@ func NewSyncGateway(sp space.Space) (*SyncGateway, error) {
 
 // ServeHTTP はリクエストのURLによってAPI処理と画面（WebUI）配信にルーティングします
 func (g *SyncGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// 1. パスが "/api" で始まる場合はAPIリクエストとして処理
+	// 1. パスが "/admin" で始まる場合はBasic認証をかける
+	if strings.HasPrefix(r.URL.Path, "/admin") {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != config.AdminUser() || password != config.AdminPass() {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Admin Area"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		g.handleAdminWebUI(w, r)
+		return
+	}
+
+	// 2. パスが "/api" で始まる場合はAPIリクエストとして処理
 	if strings.HasPrefix(r.URL.Path, "/api") {
 		g.handleAPI(w, r)
 		return
 	}
 
-	// 2. それ以外の場合は画面（静的ファイル）配信として処理
+	// 3. それ以外の場合は画面（静的ファイル）配信として処理
 	g.handleWebUI(w, r)
 }
 
@@ -228,6 +241,32 @@ func (g *SyncGateway) handleWebUI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", contentType)
+	w.Write(data)
+}
+
+// handleAdminWebUI は管理画面（静的HTML）を返却します
+func (g *SyncGateway) handleAdminWebUI(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimSuffix(r.URL.Path, "/")
+
+	var template string
+	switch path {
+	case "/admin", "/admin/":
+		template = "web/admin.html"
+	case "/admin/profiles", "/admin/profiles/":
+		template = "web/admin_profiles.html"
+	case "/admin/profiles/regist", "/admin/profiles/regist/":
+		template = "web/admin_regist.html"
+	default:
+		// デフォルトは admin.html (topページ)
+		template = "web/admin.html"
+	}
+
+	data, err := webFS.ReadFile(template)
+	if err != nil {
+		http.Error(w, "Admin template not found: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(data)
 }
 
