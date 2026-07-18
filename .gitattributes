@@ -1,0 +1,4 @@
+# 自動生成されたgRPCコードを生成物として定義
+*.pb.go linguist-generated=true
+# モックファイルなどがあれば同様に指定
+*_mock.go linguist-generated=true
