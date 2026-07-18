@@ -109,9 +109,9 @@ setup:
 # ==============================================================================
 
 # 1. developブランチ（追跡ブランチ）との差分を、不要なファイルを除外して出力する
-diff-review:
-	git diff origin/develop..HEAD -- . ':!*.pb.go' ':!*.html' ':!*.yaml' ':!*.json'
+diff-review: # 設定ファイル(.yaml, .json)はレビューに必須なため除外しない
+	git diff origin/develop..HEAD -- . ':!*.pb.go' ':!*.html'
 
 # 2. まだコミットしていないローカルの変更（作業中）を、不要なファイルを除外して出力する
-diff-review-local:
-	git diff HEAD -- . ':!*.pb.go' ':!*.html' ':!*.yaml' ':!*.json'
+diff-review-local: # 設定ファイル(.yaml, .json)はレビューに必須なため除外しない
+	git diff HEAD -- . ':!*.pb.go' ':!*.html'
