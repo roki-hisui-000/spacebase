@@ -1,4 +1,4 @@
-.PHONY: help up down restart build ps logs-middleware logs-processing valkey-keys valkey-cli test proto
+.PHONY: help up down restart build ps logs-middleware logs-processing valkey-keys valkey-cli test proto setup
 
 # デフォルトターゲット：ヘルプ表示
 help:
@@ -6,6 +6,9 @@ help:
 	@echo " Spacebase Development Skills Commands (Makefile)"
 	@echo "======================================================================"
 	@echo " 開発やAIエージェントの操作をサポートするための便利なコマンド集です。"
+	@echo ""
+	@echo " [環境構築・ツール管理]"
+	@echo "   make setup            - miseツールマネージャーと必要な開発ツール一括セットアップ"
 	@echo ""
 	@echo " [コンテナ操作]"
 	@echo "   make up               - 全てのコンテナをバックグラウンドで起動"
@@ -72,3 +75,30 @@ proto:
 	protoc --go_out=. --go_opt=paths=source_relative \
 		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
 		proto/processing.proto
+
+# miseのセットアップと定義ツールの自動インストール
+setup:
+	@if ! command -v mise >/dev/null 2>&1; then \
+		echo "======================================================================"; \
+		echo " mise がインストールされていません。インストールを開始します..."; \
+		echo "======================================================================"; \
+		curl https://mise.run | sh; \
+		echo ""; \
+		echo "👉 mise のインストールが完了しました！"; \
+		echo "お使いのシェルをアクティベートするため、以下を ~/.bashrc もしくは ~/.zshrc 等に追記してください："; \
+		echo "  echo 'eval \"\$$($$HOME/.local/share/mise/bin/mise activate bash)\"' >> ~/.bashrc"; \
+		echo "  (※zshの場合は bash を zsh に変更してください)"; \
+		echo "======================================================================"; \
+	else \
+		echo "mise は既にインストールされています。"; \
+	fi
+	@echo "定義されたツール群（Go, protoc, プラグイン）をインストールします..."
+	@if [ -f "$$HOME/.local/bin/mise" ]; then \
+		$$HOME/.local/bin/mise install; \
+	elif [ -f "$$HOME/.local/share/mise/bin/mise" ]; then \
+		$$HOME/.local/share/mise/bin/mise install; \
+	elif command -v mise >/dev/null 2>&1; then \
+		mise install; \
+	else \
+		echo "mise のパスが見つかりません。シェルを再起動するか、手動で path を通してください。"; \
+	fi
