@@ -2,13 +2,18 @@
 
 ## 参照すべきルールファイル
 - アーキテクチャ・設計思想: `docs/rules/architecture.md`
-- フロントエンド・UI規約: `docs/rules/frontend.md`
-- テストコード規約: `docs/rules/testing.md`
 - ローカル環境規約: `docs/rules/local.md`
 
 ## 禁則事項
 - `.clinerules`や`docs/`配下のファイルに書き込むことは禁止とする。
     - 変更が必要な場合はその内容を表示してユーザが手動で反映することを促す。
+
+## テンプレートの遵守
+- IssueやPull Requestの作成、またはその本文を提案・下書きする際は、必ずリポジトリ内の `.github/pull_request_template.md` および `.github/ISSUE_TEMPLATE/` 配下の各種テンプレートのフォーマット・項目に厳格に準拠すること。
+
+## 開発時における参照の制限
+- `docs/rules/github.md` は、GitHubへのPR提出・レビュー・Git連携時にのみ適用される規約です。
+- 通常の機能実装やバグ修正などのローカル開発作業においては、`docs/rules/github.md` を参照・適用する必要はありません。ローカル開発時は「参照すべきルールファイル」に記載のルールのみを厳格に遵守してください。
 
 ## 推奨開発・運用コマンド (Makefile)
 開発作業や状態確認には、プロジェクトルートに配置されている `Makefile` のタスクを最優先で利用してください。
@@ -17,4 +22,4 @@
 - **停止**: `make down`
 - **ログの監視**: `make logs-middleware` または `make logs-processing`
 - **Valkey内のデータ確認**: `make valkey-keys`
-- **テストの実行**: `make test`
+- **テストの実行**: `make test`ｄ

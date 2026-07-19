@@ -41,8 +41,6 @@ git commit -m "feat: <実装した機能や変更内容>"
 git push origin main
 ```
 
----
-
 ## 5. 認証に関するトラブルシューティング
 
 ### Q. `git push` 時にタイムアウトや認証エラーになる場合
@@ -57,9 +55,6 @@ GitHubへの認証（ユーザー名・パスワード・アクセストーク�
    ```bash
    gh auth login
    ```
-   画面の指示に従ってブラウザまたはToken認証を実行してください。
-
----
-
 ### AIエージェント（Cline）への指示
-今後、AIエージェントが自動でGit操作やコミット、プッシュを行う場合は、必ず本規約（`github.md`）に記載されている手順および `.gitignore` の設定を遵守すること。
+1. 今後、AIエージェントが自動でGit操作やコミット、プッシュを行う場合は、必ず本規約（`github.md`）に記載されている手順および `.gitignore` の設定を遵守すること。
+2. **テンプレートの遵守**: IssueやPull Requestを作成、またはその本文を提案・下書きする際は、必ずリポジトリ内の `.github/pull_request_template.md` および `.github/ISSUE_TEMPLATE/` 以下の各種テンプレート（`bug_report.md` / `feature_request.md`）のフォーマットと項目に厳格に準拠すること。
