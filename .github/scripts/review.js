@@ -22,11 +22,33 @@ async function run() {
   }
 
   // 差分ファイルの読み込み
-  const diff = fs.existsSync(DIFF_FILE_NAME) ? fs.readFileSync(DIFF_FILE_NAME, 'utf8') : '';
+  let diff = fs.existsSync(DIFF_FILE_NAME) ? fs.readFileSync(DIFF_FILE_NAME, 'utf8') : '';
   if (!diff) {
     console.log("No diff found");
     return;
   }
+
+  // 規約ファイルと .clinerules の差分ブロックを自動除外
+  const diffBlocks = diff.split(/^diff --git /gm);
+  const filteredBlocks = [];
+  if (diffBlocks[0]) {
+    filteredBlocks.push(diffBlocks[0]);
+  }
+  for (let i = 1; i < diffBlocks.length; i++) {
+    const block = diffBlocks[i];
+    const headerLine = block.split('\n')[0];
+    
+    // docs/rules/*.md または .clinerules を含む差分ブロックを除外
+    const isExcluded = (headerLine.includes('a/docs/rules/') && headerLine.includes('.md')) ||
+                       headerLine.includes('a/.clinerules');
+    
+    if (!isExcluded) {
+      filteredBlocks.push('diff --git ' + block);
+    } else {
+      console.log(`Excluding file from PR review diff: ${headerLine.trim()}`);
+    }
+  }
+  diff = filteredBlocks.join('');
 
   // 変更されたファイルの一覧を抽出
   const changedFiles = [];
