@@ -121,6 +121,49 @@ index abcdefg..1234567 100644
     assert.strictEqual(mockConsoleLog.mock.calls.some(c => c.arguments[0] === "Review generated successfully"), true);
   });
 
+  test.it('docs/spec などの設計書ドキュメント変更が含まれる場合、処理をスキップしない', async (t) => {
+    const mockExistsSync = t.mock.method(fs, 'existsSync', () => true);
+    const mockReadFileSync = t.mock.method(fs, 'readFileSync', (path) => {
+      if (path === 'diff.txt') {
+        return `diff --git a/docs/spec/feature.md b/docs/spec/feature.md
+index abcdefg..1234567 100644
+--- a/docs/spec/feature.md
++++ b/docs/spec/feature.md
+@@ -1,3 +1,4 @@
++新機能の設計仕様書`;
+      }
+      return '';
+    });
+    const mockReaddirSync = t.mock.method(fs, 'readdirSync', () => []);
+    const mockWriteFileSync = t.mock.method(fs, 'writeFileSync', () => {});
+    const mockConsoleLog = t.mock.method(console, 'log', () => {});
+
+    let fetchCallCount = 0;
+    const mockFetch = t.mock.method(global, 'fetch', async (url) => {
+      fetchCallCount++;
+      if (fetchCallCount === 1) {
+        return {
+          ok: true,
+          json: async () => ({
+            models: [{ name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] }]
+          })
+        };
+      } else {
+        return {
+          ok: true,
+          json: async () => ({
+            candidates: [{ content: { parts: [{ text: 'Mocked Gemini Review Comment for Spec' }] } }]
+          })
+        };
+      }
+    });
+
+    await run();
+
+    assert.strictEqual(mockWriteFileSync.mock.calls.length, 1);
+    assert.strictEqual(mockConsoleLog.mock.calls.some(c => c.arguments[0] === "Review generated successfully"), true);
+  });
+
   test.it('正常にモデルを自動選択してレビューを生成・ファイルに書き込む', async (t) => {
     const mockExistsSync = t.mock.method(fs, 'existsSync', () => true);
     const mockReadFileSync = t.mock.method(fs, 'readFileSync', (path) => {
