@@ -2,10 +2,12 @@ package gateway
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/roki-hisui/work/spacebase/config"
 	"github.com/roki-hisui/work/spacebase/internal/space"
@@ -24,6 +26,41 @@ func (ms *MockSpace) Get(ctx context.Context, key string) (space.Tuple, error) {
 
 func (ms *MockSpace) Keys(ctx context.Context, pattern string) ([]string, error) {
 	return []string{}, nil
+}
+
+// MockSpaceWithData holds data in memory for dashboard testing.
+type MockSpaceWithData struct {
+	data map[string][]byte
+}
+
+func NewMockSpaceWithData() *MockSpaceWithData {
+	return &MockSpaceWithData{
+		data: make(map[string][]byte),
+	}
+}
+
+func (ms *MockSpaceWithData) Put(ctx context.Context, tuple space.Tuple) error {
+	ms.data[tuple.Key] = tuple.Value
+	return nil
+}
+
+func (ms *MockSpaceWithData) Get(ctx context.Context, key string) (space.Tuple, error) {
+	val, ok := ms.data[key]
+	if !ok {
+		return space.Tuple{}, http.ErrMissingBoundary // エラーを返す (何のエラーでもよい)
+	}
+	return space.Tuple{Key: key, Value: val}, nil
+}
+
+func (ms *MockSpaceWithData) Keys(ctx context.Context, pattern string) ([]string, error) {
+	var keys []string
+	prefix := strings.TrimSuffix(pattern, "*")
+	for k := range ms.data {
+		if strings.HasPrefix(k, prefix) {
+			keys = append(keys, k)
+		}
+	}
+	return keys, nil
 }
 
 func TestServeHTTPAdminAuthAndRouting(t *testing.T) {
@@ -137,5 +174,102 @@ func TestHandleAdminWebUI_Fallback(t *testing.T) {
 	}
 	if !strings.Contains(rrNotFound.Body.String(), "<title>Spacebase - 管理画面</title>") {
 		t.Errorf("Expected body to contain admin.html content, got:\n%s", rrNotFound.Body.String())
+	}
+}
+
+func TestDashboardAPI_PostAndGet(t *testing.T) {
+	mockSpace := NewMockSpaceWithData()
+	gateway := &SyncGateway{
+		client: nil,
+		addr:   "localhost:50051",
+		sp:     mockSpace,
+	}
+
+	// 1. POST /api/dashboard/orders で注文を永続化
+	orderPayload := `{"userId": "user_123", "price": 500, "status": "completed", "requestId": "req_abc"}`
+	reqPost := httptest.NewRequest("POST", "/api/dashboard/orders", strings.NewReader(orderPayload))
+	rrPost := httptest.NewRecorder()
+
+	gateway.ServeHTTP(rrPost, reqPost)
+
+	if rrPost.Code != http.StatusCreated {
+		t.Errorf("Expected status %d, got %d", http.StatusCreated, rrPost.Code)
+	}
+
+	var createdOrder map[string]interface{}
+	if err := json.Unmarshal(rrPost.Body.Bytes(), &createdOrder); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
+
+	if createdOrder["userId"] != "user_123" || createdOrder["price"] != float64(500) || createdOrder["status"] != "completed" {
+		t.Errorf("Saved order details mismatch: %+v", createdOrder)
+	}
+	orderID, ok := createdOrder["orderId"].(string)
+	if !ok || !strings.HasPrefix(orderID, "ord_") {
+		t.Errorf("Invalid orderId generated: %s", orderID)
+	}
+
+	// 2. GET /api/dashboard でダッシュボード情報を取得
+	reqGet := httptest.NewRequest("GET", "/api/dashboard", nil)
+	rrGet := httptest.NewRecorder()
+
+	gateway.ServeHTTP(rrGet, reqGet)
+
+	if rrGet.Code != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, rrGet.Code)
+	}
+
+	var dashboard map[string]interface{}
+	if err := json.Unmarshal(rrGet.Body.Bytes(), &dashboard); err != nil {
+		t.Fatalf("Failed to unmarshal dashboard JSON: %v", err)
+	}
+
+	if dashboard["workerStatus"] != "running" {
+		t.Errorf("Expected workerStatus running, got %v", dashboard["workerStatus"])
+	}
+
+	recentOrders, ok := dashboard["recentOrders"].([]interface{})
+	if !ok || len(recentOrders) != 1 {
+		t.Fatalf("Expected 1 recent order, got %+v", dashboard["recentOrders"])
+	}
+
+	fetchedOrder := recentOrders[0].(map[string]interface{})
+	if fetchedOrder["orderId"] != orderID {
+		t.Errorf("Fetched orderId mismatch. Expected %s, got %v", orderID, fetchedOrder["orderId"])
+	}
+}
+
+func TestDashboardAPI_Streaming(t *testing.T) {
+	mockSpace := NewMockSpaceWithData()
+	gateway := &SyncGateway{
+		client: nil,
+		addr:   "localhost:50051",
+		sp:     mockSpace,
+	}
+
+	// ストリーミング接続のシミュレーション。context をキャンセルして無限ループを防止
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reqStream := httptest.NewRequest("GET", "/api/dashboard?stream=true", nil).WithContext(ctx)
+	rrStream := httptest.NewRecorder()
+
+	// 1秒後にストリーム接続を終了するゴルーチン
+	go func() {
+		time.Sleep(1 * time.Second)
+		cancel()
+	}()
+
+	gateway.ServeHTTP(rrStream, reqStream)
+
+	// SSE レスポンスヘッダの検証
+	contentType := rrStream.Header().Get("Content-Type")
+	if !strings.Contains(contentType, "text/event-stream") {
+		t.Errorf("Expected Content-Type to contain 'text/event-stream', got '%s'", contentType)
+	}
+
+	bodyStr := rrStream.Body.String()
+	if !strings.Contains(bodyStr, "data:") {
+		t.Errorf("Expected body to contain event stream data format, got:\n%s", bodyStr)
 	}
 }
