@@ -9,6 +9,7 @@ import (
 type OrderStatus int
 
 const (
+	StatusUnknown   OrderStatus = 0
 	StatusCompleted OrderStatus = 1
 	StatusOrder     OrderStatus = 2
 	StatusReject    OrderStatus = 3
@@ -16,6 +17,7 @@ const (
 )
 
 var OrderStatusToString = map[OrderStatus]string{
+	StatusUnknown:   "unknown",
 	StatusCompleted: "completed",
 	StatusOrder:     "order",
 	StatusReject:    "reject",
@@ -23,6 +25,7 @@ var OrderStatusToString = map[OrderStatus]string{
 }
 
 var StringToOrderStatus = map[string]OrderStatus{
+	"unknown":   StatusUnknown,
 	"completed": StatusCompleted,
 	"order":     StatusOrder,
 	"reject":    StatusReject,
@@ -77,7 +80,7 @@ func (r *RecentOrder) UnmarshalJSON(data []byte) error {
 		if _, err := fmt.Sscanf(aux.Status, "%d", &statusInt); err == nil {
 			r.Status = OrderStatus(statusInt)
 		} else {
-			r.Status = 0
+			r.Status = StatusUnknown
 		}
 	}
 	return nil
