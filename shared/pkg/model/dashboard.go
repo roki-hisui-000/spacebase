@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -76,8 +77,7 @@ func (r *RecentOrder) UnmarshalJSON(data []byte) error {
 	if val, ok := StringToOrderStatus[aux.Status]; ok {
 		r.Status = val
 	} else {
-		var statusInt int
-		if _, err := fmt.Sscanf(aux.Status, "%d", &statusInt); err == nil {
+		if statusInt, err := strconv.Atoi(aux.Status); err == nil { // strconv.Atoi の使用も検討
 			r.Status = OrderStatus(statusInt)
 		} else {
 			r.Status = StatusUnknown
