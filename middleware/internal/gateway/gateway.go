@@ -6,13 +6,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/roki-hisui/work/spacebase/config"
 	processingpb "github.com/roki-hisui/work/spacebase/internal/processing"
 	"github.com/roki-hisui/work/spacebase/internal/space"
 	"github.com/roki-hisui/work/spacebase/pkg/model"
+	sharedmodel "github.com/roki-hisui/work/spacebase/shared/pkg/model"
 
 	"google.golang.org/grpc"
 )
@@ -89,6 +92,20 @@ func (g *SyncGateway) handleAPI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		g.handleGetProfiles(w, r, ctx)
+
+	case "/api/dashboard/orders":
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		g.handlePostDashboardOrder(w, r, ctx)
+
+	case "/api/dashboard":
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		g.handleGetDashboard(w, r, ctx)
 
 	default:
 		http.Error(w, "Not found", http.StatusNotFound)
@@ -205,6 +222,178 @@ func (g *SyncGateway) handleGetProfiles(w http.ResponseWriter, r *http.Request, 
 		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+// handlePostDashboardOrder handles POST /api/dashboard/orders (creates a new order to persist)
+func (g *SyncGateway) handlePostDashboardOrder(w http.ResponseWriter, r *http.Request, ctx context.Context) {
+	if g.sp == nil {
+		http.Error(w, "Space adapter is not configured", http.StatusInternalServerError)
+		return
+	}
+
+	var payload struct {
+		UserID    string `json:"userId"`
+		Price     uint64 `json:"price"`
+		Status    string `json:"status"`
+		RequestID string `json:"requestId"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "invalid request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	orderID := "ord_" + uuid.New().String()
+
+	statusVal := sharedmodel.StatusUnknown
+	if val, ok := sharedmodel.StringToOrderStatus[payload.Status]; ok {
+		statusVal = val
+	}
+
+	order := sharedmodel.RecentOrder{
+		OrderID:   orderID,
+		UserID:    payload.UserID,
+		Price:     payload.Price,
+		Status:    statusVal,
+		RequestID: payload.RequestID,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	data, err := json.Marshal(order)
+	if err != nil {
+		http.Error(w, "failed to marshal order: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = g.sp.Put(ctx, space.Tuple{
+		Key:   "order:" + orderID,
+		Value: data,
+	})
+	if err != nil {
+		http.Error(w, "failed to save order: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(data)
+}
+
+// handleGetDashboard handles GET /api/dashboard (returns current dashboard metrics and recent orders)
+// Supports Server-Sent Events (SSE) streaming if stream=true query parameter or Accept: text/event-stream header is specified.
+func (g *SyncGateway) handleGetDashboard(w http.ResponseWriter, r *http.Request, ctx context.Context) {
+	if g.sp == nil {
+		http.Error(w, "Space adapter is not configured", http.StatusInternalServerError)
+		return
+	}
+
+	stream := r.URL.Query().Get("stream") == "true" || strings.Contains(r.Header.Get("Accept"), "text/event-stream")
+
+	if stream {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+			return
+		}
+
+		// 初回のデータを即時に送信
+		db, err := g.fetchDashboardData(ctx)
+		if err == nil {
+			if data, err := json.Marshal(db); err == nil {
+				_, _ = w.Write([]byte("data: " + string(data) + "\n\n"))
+				flusher.Flush()
+			}
+		}
+
+		ticker := time.NewTicker(3 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-r.Context().Done():
+				return
+			case <-ticker.C:
+				db, err := g.fetchDashboardData(ctx)
+				if err != nil {
+					continue
+				}
+				data, err := json.Marshal(db)
+				if err != nil {
+					continue
+				}
+				_, _ = w.Write([]byte("data: " + string(data) + "\n\n"))
+				flusher.Flush()
+			}
+		}
+	} else {
+		db, err := g.fetchDashboardData(ctx)
+		if err != nil {
+			http.Error(w, "failed to fetch dashboard data: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(db); err != nil {
+			http.Error(w, "failed to encode response: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func (g *SyncGateway) fetchDashboardData(ctx context.Context) (sharedmodel.Dashboard, error) {
+	var db sharedmodel.Dashboard
+
+	workerStatusVal := "running"
+	if tuple, err := g.sp.Get(ctx, "dashboard:worker_status"); err == nil && len(tuple.Value) > 0 {
+		workerStatusVal = string(tuple.Value)
+	}
+	db.WorkerStatus = workerStatusVal
+
+	metricsVal := sharedmodel.DashboardMetrics{
+		CurrentStock: 0,
+		QueueLength:  0,
+		DbOrderCount: 0,
+	}
+	if tuple, err := g.sp.Get(ctx, "dashboard:metrics"); err == nil && len(tuple.Value) > 0 {
+		var m sharedmodel.DashboardMetrics
+		if err := json.Unmarshal(tuple.Value, &m); err == nil {
+			metricsVal = m
+		}
+	}
+	db.Metrics = metricsVal
+
+	keys, err := g.sp.Keys(ctx, "order:*")
+	if err != nil {
+		return db, err
+	}
+
+	var orders []sharedmodel.RecentOrder
+	for _, key := range keys {
+		tuple, err := g.sp.Get(ctx, key)
+		if err != nil {
+			continue
+		}
+		var order sharedmodel.RecentOrder
+		if err := json.Unmarshal(tuple.Value, &order); err == nil {
+			orders = append(orders, order)
+		}
+	}
+
+	sort.Slice(orders, func(i, j int) bool {
+		return orders[i].CreatedAt.After(orders[j].CreatedAt)
+	})
+
+	if orders == nil {
+		orders = []sharedmodel.RecentOrder{}
+	}
+	db.RecentOrders = orders
+
+	return db, nil
 }
 
 // handleWebUI は埋め込まれた Web 画面を返却します
