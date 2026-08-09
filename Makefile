@@ -1,5 +1,11 @@
 .PHONY: help up down restart build ps logs-middleware logs-processing valkey-keys valkey-cli test proto setup
 
+# 環境変数のデフォルト設定（mise未ロード時などのフォールバック用）
+VALKEY_PORT ?= 6379
+VALKEY_HOST ?= 127.0.0.1
+export VALKEY_PORT
+export VALKEY_HOST
+
 # デフォルトターゲット：ヘルプ表示
 help:
 	@echo "======================================================================"
@@ -32,39 +38,57 @@ help:
 
 # 全てのコンテナを起動
 up:
-	docker-compose up -d
+	docker compose up -d
 
 # 全てのコンテナを停止・削除
 down:
-	docker-compose down
+	docker compose down
 
 # 全てのコンテナを再起動
 restart:
-	docker-compose restart
+	docker compose restart
 
 # コンテナイメージのビルド
 build:
-	docker-compose build --no-cache
+	docker compose build --no-cache
 
 # コンテナの稼働状況確認
 ps:
-	docker-compose ps
+	docker compose ps
 
 # 仮想ミドルウェアのログ監視
 logs-middleware:
-	docker-compose logs -f middleware
+	docker compose logs -f middleware
 
 # 処理ユニットのログ監視
 logs-processing:
-	docker-compose logs -f processing
+	docker compose logs -f processing
 
 # Valkeyに保存されている全キーの確認
 valkey-keys:
-	valkey-cli KEYS "*" || redis-cli KEYS "*"
+	@if command -v valkey-cli >/dev/null 2>&1; then \
+		valkey-cli -h $(VALKEY_HOST) -p $(VALKEY_PORT) KEYS "*"; \
+	elif command -v redis-cli >/dev/null 2>&1; then \
+		redis-cli -h $(VALKEY_HOST) -p $(VALKEY_PORT) KEYS "*"; \
+	elif docker ps --format '{{.Names}}' | grep -q "^spacebase-valkey$$"; then \
+		docker exec -it spacebase-valkey valkey-cli KEYS "*"; \
+	else \
+		echo "Valkey CLI が見つからず、Valkey コンテナも起動していません。"; \
+		exit 1; \
+	fi
 
 # Valkey CLIの起動
 valkey-cli:
-	valkey-cli || redis-cli
+	@if command -v valkey-cli >/dev/null 2>&1; then \
+		valkey-cli -h $(VALKEY_HOST) -p $(VALKEY_PORT); \
+	elif command -v redis-cli >/dev/null 2>&1; then \
+		redis-cli -h $(VALKEY_HOST) -p $(VALKEY_PORT); \
+	elif docker ps --format '{{.Names}}' | grep -q "^spacebase-valkey$$"; then \
+		docker exec -it spacebase-valkey valkey-cli; \
+	else \
+		echo "Valkey CLI が見つからず、Valkey コンテナも起動していません。"; \
+		exit 1; \
+	fi
 
 # 単体テストの実行
 test:

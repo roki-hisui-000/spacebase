@@ -1,6 +1,15 @@
 #version: "3.8"
 
 services:
+  valkey:
+    image: valkey/valkey:8.0-alpine
+    container_name: spacebase-valkey
+    ports:
+      - "${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
+    volumes:
+      - valkey_data:/data
+    restart: always
+
   processing:
     build:
       context: .
@@ -8,6 +17,8 @@ services:
     image: spacebase-processing:latest
     container_name: spacebase-processing
     network_mode: "host"
+    depends_on:
+      - valkey
 
   middleware:
     build:
@@ -16,3 +27,8 @@ services:
     image: spacebase-middleware:latest
     container_name: spacebase-middleware
     network_mode: "host"
+    depends_on:
+      - valkey
+
+volumes:
+  valkey_data:
