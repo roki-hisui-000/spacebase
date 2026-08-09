@@ -44,7 +44,7 @@ func (s OrderStatus) String() string {
 type RecentOrder struct {
 	OrderID   string      `json:"orderId"`
 	UserID    string      `json:"userId"`
-	Price     float64     `json:"price"`
+	Price     uint64      `json:"price"`
 	Status    OrderStatus `json:"status"`
 	RequestID string      `json:"requestId"`
 	CreatedAt time.Time   `json:"createdAt"`
@@ -77,7 +77,7 @@ func (r *RecentOrder) UnmarshalJSON(data []byte) error {
 	if val, ok := StringToOrderStatus[aux.Status]; ok {
 		r.Status = val
 	} else {
-		if statusInt, err := strconv.Atoi(aux.Status); err == nil { // strconv.Atoi の使用も検討
+		if statusInt, err := strconv.Atoi(aux.Status); err == nil {
 			r.Status = OrderStatus(statusInt)
 		} else {
 			r.Status = StatusUnknown

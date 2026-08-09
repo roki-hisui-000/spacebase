@@ -15,10 +15,10 @@ func TestDashboardJSON_Unmarshal(t *testing.T) {
     "dbOrderCount": 35
   },
   "recentOrders": [
-    { "orderId": "ord_89a3f", "userId": "user_42", "price": 150.0, "status": "completed", "requestId": "req_1", "createdAt": "2026-07-04T09:55:02Z" },
-    { "orderId": "ord_12c7b", "userId": "user_11", "price": 200.0, "status": "completed", "requestId": "req_2", "createdAt": "2026-07-04T09:55:01Z" },
-    { "orderId": "ord_unknown", "userId": "user_99", "price": 0.0, "status": "invalid_status_text", "requestId": "req_3", "createdAt": "2026-07-04T09:55:00Z" },
-    { "orderId": "ord_explicit_unknown", "userId": "user_100", "price": 10.0, "status": "unknown", "requestId": "req_4", "createdAt": "2026-07-04T09:55:00Z" }
+    { "orderId": "ord_89a3f", "userId": "user_42", "price": 150, "status": "completed", "requestId": "req_1", "createdAt": "2026-07-04T09:55:02Z" },
+    { "orderId": "ord_12c7b", "userId": "user_11", "price": 200, "status": "completed", "requestId": "req_2", "createdAt": "2026-07-04T09:55:01Z" },
+    { "orderId": "ord_unknown", "userId": "user_99", "price": 0, "status": "invalid_status_text", "requestId": "req_3", "createdAt": "2026-07-04T09:55:00Z" },
+    { "orderId": "ord_explicit_unknown", "userId": "user_100", "price": 10, "status": "unknown", "requestId": "req_4", "createdAt": "2026-07-04T09:55:00Z" }
   ]
 }`
 
@@ -48,8 +48,8 @@ func TestDashboardJSON_Unmarshal(t *testing.T) {
 	if order1.Status != StatusCompleted {
 		t.Errorf("expected status completed (1), got %d", order1.Status)
 	}
-	if order1.Price != 150.0 {
-		t.Errorf("expected price 150.0, got %f", order1.Price)
+	if order1.Price != 150 {
+		t.Errorf("expected price 150, got %d", order1.Price)
 	}
 
 	expectedTime, _ := time.Parse(time.RFC3339, "2026-07-04T09:55:02Z")
@@ -89,7 +89,7 @@ func TestDashboardJSON_Marshal(t *testing.T) {
 			{
 				OrderID:   "ord_999",
 				UserID:    "user_abc",
-				Price:     500.50,
+				Price:     500,
 				Status:    StatusCompleted,
 				RequestID: "req_xyz",
 				CreatedAt: createdAt,
@@ -97,7 +97,7 @@ func TestDashboardJSON_Marshal(t *testing.T) {
 			{
 				OrderID:   "ord_888",
 				UserID:    "user_def",
-				Price:     0.0,
+				Price:     0,
 				Status:    StatusUnknown,
 				RequestID: "req_unknown",
 				CreatedAt: createdAt,
