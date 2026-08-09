@@ -59,11 +59,18 @@ async function run() {
   }
 
   // 設定ファイル（.yml, .json）やドキュメントのみの変更の場合は、検証をスキップしてコスト削減
+  // ただし、docs/rules/以外のdocs/配下（docs/spec/など）の設計書ファイルが変更された場合は、仕様のレビューを行うためスキップしない。
   const allowedExtensions = ['.yml', '.yaml', '.json', '.md', '.txt'];
   const isSkipOnly = changedFiles.length > 0 && changedFiles.every(file => {
     const extIdx = file.lastIndexOf('.');
     if (extIdx === -1) return false;
     const ext = file.substring(extIdx).toLowerCase();
+    
+    // docs/ 配下（docs/rules/ 以外、例えば docs/spec/ など）の設計書ファイルの変更は、仕様レビューを行いたいためスキップさせない
+    if (file.startsWith('docs/') && !file.startsWith('docs/rules/')) {
+      return false;
+    }
+    
     return allowedExtensions.includes(ext);
   });
 
