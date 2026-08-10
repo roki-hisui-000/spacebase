@@ -1,6 +1,6 @@
 # Binaries
-processing
-server
+/processing
+/server
 
 # Logs
 *.log
