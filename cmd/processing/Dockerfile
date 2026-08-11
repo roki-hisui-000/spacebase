@@ -1,5 +1,5 @@
 # Build stage for Processing Unit (gRPC server)
-FROM golang:1.25 AS builder
+FROM golang:1.22 AS builder
 WORKDIR /app
 
 # モジュールファイルと依存取得
