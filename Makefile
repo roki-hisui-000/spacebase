@@ -106,9 +106,10 @@ setup:
 # gRPCプロトコルのコード生成
 generate:
 	mkdir -p internal/processing
-	protoc --go_out=internal/processing --go_opt=module=github.com/roki-hisui/work/spacebase \
-		--go-grpc_out=internal/processing --go-grpc_opt=module=github.com/roki-hisui/work/spacebase \
+	protoc --go_out=. --go_opt=module=github.com/roki-hisui/work/spacebase \
+		--go-grpc_out=. --go-grpc_opt=module=github.com/roki-hisui/work/spacebase \
 		proto/processing.proto
+
 
 # ==============================================================================
 # レビュー用タスク (トークン削減対策)
