@@ -1,4 +1,6 @@
-.PHONY: help up down restart build ps logs-middleware logs-processing valkey-keys valkey-cli test proto setup
+.PHONY: help up down restart build ps logs-middleware logs-processing valkey-keys valkey-cli test proto setup generate
+
+####
 
 # デフォルトターゲット：ヘルプ表示
 help:
@@ -27,7 +29,7 @@ help:
 	@echo ""
 	@echo " [テスト・ビルド]"
 	@echo "   make test             - Goプロジェクト全体の単体テストを実行"
-	@echo "   make proto            - protoファイルからGoのgRPCコードを生成"
+	@echo "   make proto/generate   - protoファイルからGoのgRPCコードを生成"
 	@echo "======================================================================"
 
 # 全てのコンテナを起動
@@ -72,9 +74,7 @@ test:
 
 # gRPCプロトコルのコード生成
 proto:
-	protoc --go_out=. --go_opt=paths=source_relative \
-		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
-		proto/processing.proto
+	$(MAKE) generate
 
 # miseのセットアップと定義ツールの自動インストール
 setup:
@@ -102,6 +102,13 @@ setup:
 	else \
 		echo "mise のパスが見つかりません。シェルを再起動するか、手動で path を通してください。"; \
 	fi
+
+# gRPCプロトコルのコード生成
+generate:
+	mkdir -p internal/processing
+	protoc --go_out=. --go_opt=module=github.com/roki-hisui/work/spacebase \
+		--go-grpc_out=. --go-grpc_opt=module=github.com/roki-hisui/work/spacebase \
+		proto/processing.proto
 
 
 # ==============================================================================
