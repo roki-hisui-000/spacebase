@@ -16,3 +16,9 @@ services:
     image: spacebase-middleware:latest
     container_name: spacebase-middleware
     network_mode: "host"
+
+  valkey:
+    image: valkey/valkey:8
+    container_name: spacebase-valkey
+    network_mode: "host"
+    restart: always
