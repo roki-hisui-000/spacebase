@@ -2,7 +2,8 @@
 
 ## 構成
 - **Processing Unit**: Dockerコンテナで起動。
-- **Valkey**: ローカル環境（ホスト上）で起動済みとする。
+- **Middleware**: Dockerコンテナで起動。
+- **Valkey**: Dockerコンテナで起動。Docker Compose のライフサイクル内で自動管理。
 
 ## ローカル環境起動手順
 - ユーザーから明示的な起動指示があった場合のみ実行する（勝手に起動しない）。

@@ -1,6 +1,10 @@
 # Binaries
-processing
-server
+/processing
+/server
+
+# Generated gRPC Go files
+**/*.pb.go
+**/*.grpc.pb.go
 
 # Logs
 *.log
