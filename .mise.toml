@@ -3,3 +3,9 @@ go = "1.25.0"
 protoc = "26.1"
 "go:google.golang.org/protobuf/cmd/protoc-gen-go" = "v1.36.11"
 "go:google.golang.org/grpc/cmd/protoc-gen-go-grpc" = "v1.5.1"
+valkey = "8.0.2"
+
+[env]
+# Valkeyの接続設定を一元管理
+VALKEY_HOST = "127.0.0.1"
+VALKEY_PORT = "6379"
