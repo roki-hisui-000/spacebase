@@ -7,9 +7,9 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"github.com/roki-hisui/work/spacebase/config"
 	processingpb "github.com/roki-hisui/work/spacebase/internal/processing"
 	"github.com/roki-hisui/work/spacebase/internal/space"
@@ -67,10 +67,20 @@ func (s *processingServer) RegisterUser(ctx context.Context, req *processingpb.R
 }
 
 func main() {
-	// RedisSpace adapter initialization (using Redis protocol client for Valkey compatibility)
-	sp := space.NewRedisSpace(&redis.Options{
-		Addr: fmt.Sprintf("%s:%s", config.RedisHost(), config.RedisPort()),
-	})
+	// gRPC SpaceService へ接続して GRPCSpace アダプタを初期化
+	spaceAddr := os.Getenv("SPACE_SERVICE_ADDR")
+	if spaceAddr == "" {
+		spaceAddr = "localhost:50052"
+	}
+
+	log.Printf("Connecting to middleware SpaceService at %s", spaceAddr)
+	conn, err := grpc.Dial(spaceAddr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
+	if err != nil {
+		log.Fatalf("failed to connect to middleware SpaceService: %v", err)
+	}
+	defer conn.Close()
+
+	sp := space.NewGRPCSpace(conn)
 
 	// Start gRPC server
 	addr := os.Getenv("PROCESSING_UNIT_ADDR")
@@ -89,3 +99,4 @@ func main() {
 		log.Fatalf("gRPC serve failed: %v", err)
 	}
 }
+
