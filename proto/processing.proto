@@ -23,3 +23,44 @@ service ProcessingUnit {
   // ユーザ登録を処理ユニットに依頼
   rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
 }
+
+// SpaceService gRPC サービス定義
+service SpaceService {
+  rpc Put(PutRequest) returns (PutResponse);
+  rpc Get(GetRequest) returns (GetResponse);
+  rpc Keys(KeysRequest) returns (KeysResponse);
+}
+
+message TupleMessage {
+  string key = 1;
+  bytes value = 2;
+  int64 ttl_ms = 3;
+}
+
+message PutRequest {
+  TupleMessage tuple = 1;
+}
+
+message PutResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message GetRequest {
+  string key = 1;
+}
+
+message GetResponse {
+  TupleMessage tuple = 1;
+  bool found = 2;
+  string error = 3;
+}
+
+message KeysRequest {
+  string pattern = 1;
+}
+
+message KeysResponse {
+  repeated string keys = 1;
+  string error = 2;
+}
