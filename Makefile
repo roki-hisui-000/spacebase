@@ -39,7 +39,7 @@ help:
 	@echo "======================================================================"
 
 # 全てのコンテナを起動
-up:
+up: proto
 	docker compose up -d
 
 # 全てのコンテナを停止・削除
@@ -47,11 +47,11 @@ down:
 	docker compose down
 
 # 全てのコンテナを再起動
-restart:
+restart: proto
 	docker compose restart
 
 # コンテナイメージのビルド
-build:
+build: proto
 	docker compose build --no-cache
 
 # コンテナの稼働状況確認
