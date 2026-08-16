@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"sort"
@@ -51,6 +52,8 @@ func NewSyncGateway(sp space.Space) (*SyncGateway, error) {
 
 // ServeHTTP はリクエストのURLによってAPI処理と画面（WebUI）配信にルーティングします
 func (g *SyncGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[HTTP Sync Request] %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+
 	// 1. パスが "/admin" で始まる場合はBasic認証をかける
 	if strings.HasPrefix(r.URL.Path, "/admin") {
 		username, password, ok := r.BasicAuth()
