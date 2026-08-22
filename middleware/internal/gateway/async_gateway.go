@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -23,6 +24,8 @@ func NewAsyncGateway() *AsyncGateway {
 
 // ServeHTTP receives HTTP requests and publishes an event asynchronously.
 func (g *AsyncGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[HTTP Async Request] %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+
 	// TODO: Parse JSON request body, map to event structure.
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
