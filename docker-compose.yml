@@ -4,7 +4,8 @@ services:
   valkey:
     image: valkey/valkey:8
     container_name: spacebase-valkey
-    network_mode: "host"
+    ports:
+      - "6379:6379"
     restart: always
 
   processing:
@@ -13,7 +14,12 @@ services:
       dockerfile: cmd/processing/Dockerfile
     image: spacebase-processing:latest
     container_name: spacebase-processing
-    network_mode: "host"
+    ports:
+      - "50051:50051"
+    environment:
+      - SPACE_SERVICE_ADDR=middleware:50052
+    depends_on:
+      - middleware
 
   middleware:
     build:
@@ -21,4 +27,13 @@ services:
       dockerfile: middleware/Dockerfile
     image: spacebase-middleware:latest
     container_name: spacebase-middleware
-    network_mode: "host"
+    ports:
+      - "8080:8080"
+      - "50052:50052"
+    environment:
+      - REDIS_HOST=valkey
+      - REDIS_PORT=6379
+      - PROCESSING_UNIT_ADDR=processing:50051
+    depends_on:
+      - valkey
+
