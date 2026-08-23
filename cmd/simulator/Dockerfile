@@ -9,8 +9,8 @@ RUN go mod download
 # ソースコードをコピーしてビルド
 COPY . .
 
-# テストの実行 (シミュレータに関連するパッケージのチェック)
-RUN go test -v ./cmd/simulator/... || true
+# テストの実行 (テスト失敗時はビルドが中断されます)
+RUN go test -v ./cmd/simulator/...
 
 WORKDIR /app/cmd/simulator
 RUN CGO_ENABLED=0 GOOS=linux go build -a -o /app/simulator .

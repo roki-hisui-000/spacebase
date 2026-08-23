@@ -21,7 +21,7 @@
   - `order` (注文受付): 15%
   - `reject` (拒否): 10%
   - `error` (エラー): 5%
-- `requestId`: `req_<UUIDv4形式またはランダム文字列>`
+- `requestId`: `req_<ランダムな16進数文字列>`
 
 ```json
 {

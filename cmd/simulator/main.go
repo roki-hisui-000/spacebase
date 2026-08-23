@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -101,19 +102,29 @@ func getEnv(key, defaultVal string) string {
 	return defaultVal
 }
 
-// waitForAPI attempts to ping the API until it succeeds, blocking until it's ready.
-func waitForAPI(client *http.Client, url string) {
+// waitForAPI attempts to ping the health endpoint until it succeeds, blocking until it's ready.
+func waitForAPI(client *http.Client, apiURL string) {
+	// apiURLが "http://middleware:8080/api/dashboard/orders" などの場合、
+	// "/api/" より前のベース部分を取り出し、"/health" を結合してヘルスチェックURLを自動構成します。
+	healthURL := "http://middleware:8080/health"
+	if idx := strings.Index(apiURL, "/api/"); idx != -1 {
+		healthURL = apiURL[:idx] + "/health"
+	}
+
 	for {
-		log.Printf("Checking connectivity to API: %s ...", url)
-		// Send a POST with an empty body to check server status.
-		resp, err := client.Post(url, "application/json", bytes.NewBuffer([]byte("{}")))
+		log.Printf("Checking connectivity to Health Endpoint: %s ...", healthURL)
+		resp, err := client.Get(healthURL)
 		if err == nil {
 			resp.Body.Close()
-			log.Println("Successfully connected to API.")
-			return
+			if resp.StatusCode == http.StatusOK {
+				log.Println("Successfully connected to API (Health Check OK).")
+				return
+			}
+			log.Printf("API returned non-200 status for health check: %d", resp.StatusCode)
+		} else {
+			log.Printf("API is not ready yet (%v). Retrying in 5 seconds...", err)
 		}
 
-		log.Printf("API is not ready yet (%v). Retrying in 5 seconds...", err)
 		time.Sleep(5 * time.Second)
 	}
 }

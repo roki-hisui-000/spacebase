@@ -93,8 +93,9 @@ valkey-cli:
 	fi
 
 # 単体テストの実行
-test:
+test: # すべてのGoパッケージのテストを実行
 	go test -v ./...
+
 
 # シミュレータのキック（送信件数COUNTと間隔INTERVALを指定可能）
 # 例: make run-simulator COUNT=10 INTERVAL=500
