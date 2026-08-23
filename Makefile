@@ -96,6 +96,13 @@ valkey-cli:
 test:
 	go test -v ./...
 
+# シミュレータのキック（送信件数COUNTと間隔INTERVALを指定可能）
+# 例: make run-simulator COUNT=10 INTERVAL=500
+run-simulator:
+	@COUNT_VAL=$$(echo $${COUNT:-0}); \
+	INTERVAL_VAL=$$(echo $${INTERVAL:-1000}); \
+	docker compose run --rm simulator -count=$$COUNT_VAL -interval=$$INTERVAL_VAL
+
 # gRPCプロトコルのコード生成
 proto:
 	$(MAKE) generate
