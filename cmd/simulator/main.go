@@ -6,13 +6,15 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 )
+
+var r *rand.Rand
 
 // OrderRequest represents the request body for the order persistence API
 type OrderRequest struct {
@@ -62,8 +64,8 @@ func main() {
 		log.Printf("  - LIMIT: Infinite requests")
 	}
 
-	// Seed the random number generator
-	rand.Seed(time.Now().UnixNano())
+	// Seed the random number generator using Go v2 rand PCG source
+	r = rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0))
 
 	client := &http.Client{
 		Timeout: 5 * time.Second,
@@ -134,7 +136,7 @@ func generateRandomOrder() OrderRequest {
 	// Status weighted choice:
 	// completed: 70%, order: 15%, reject: 10%, error: 5%
 	status := "completed"
-	roll := rand.Intn(100)
+	roll := r.IntN(100)
 	if roll < 5 {
 		status = "error"
 	} else if roll < 15 {
@@ -144,14 +146,14 @@ func generateRandomOrder() OrderRequest {
 	}
 
 	// Price: 100 to 2000 in steps of 50
-	steps := rand.Intn(39) // 0 to 38
+	steps := r.IntN(39) // 0 to 38
 	price := 100 + (steps * 50)
 
 	// Random userID from user_1 to user_100
-	userID := fmt.Sprintf("user_%d", rand.Intn(100)+1)
+	userID := fmt.Sprintf("user_%d", r.IntN(100)+1)
 
-	// Request ID with random suffix
-	requestID := fmt.Sprintf("req_%x", rand.Int63())
+	// Request ID with random suffix (using Uint64 for v2 instead of Int63)
+	requestID := fmt.Sprintf("req_%x", r.Uint64())
 
 	return OrderRequest{
 		UserID:    userID,

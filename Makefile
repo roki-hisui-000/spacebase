@@ -50,9 +50,9 @@ down:
 restart: proto
 	docker compose restart
 
-# コンテナイメージのビルド
+# コンテナイメージのビルド（開発時に不要なシミュレータビルドは除外します）
 build: proto
-	docker compose build --no-cache
+	docker compose build --no-cache processing middleware
 
 # コンテナの稼働状況確認
 ps:
@@ -97,11 +97,12 @@ test: # すべてのGoパッケージのテストを実行
 	go test -v ./...
 
 
-# シミュレータのキック（送信件数COUNTと間隔INTERVALを指定可能）
+# シミュレータのキック（送信時にシミュレータのみを自動的・オンデマンドでビルドしてキックします）
 # 例: make run-simulator COUNT=10 INTERVAL=500
 run-simulator:
 	@COUNT_VAL=$$(echo $${COUNT:-0}); \
 	INTERVAL_VAL=$$(echo $${INTERVAL:-1000}); \
+	docker compose build simulator; \
 	docker compose run --rm simulator -count=$$COUNT_VAL -interval=$$INTERVAL_VAL
 
 # gRPCプロトコルのコード生成
