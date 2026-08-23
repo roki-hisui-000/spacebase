@@ -37,3 +37,18 @@ services:
     depends_on:
       - valkey
 
+  simulator:
+    build:
+      context: .
+      dockerfile: cmd/simulator/Dockerfile
+    image: spacebase-simulator:latest
+    container_name: spacebase-simulator
+    environment:
+      - API_URL=http://middleware:8080/api/dashboard/orders
+      - INTERVAL_MS=1000
+      - ENABLED=true
+    depends_on:
+      - middleware
+    profiles:
+      - simulator-only
+

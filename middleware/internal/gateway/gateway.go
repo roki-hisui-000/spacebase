@@ -54,6 +54,14 @@ func NewSyncGateway(sp space.Space) (*SyncGateway, error) {
 func (g *SyncGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[HTTP Sync Request] %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
 
+	// ヘルスチェック用エンドポイント (シミュレータ等の接続確認用)
+	if r.URL.Path == "/health" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+		return
+	}
+
 	// 1. パスが "/admin" で始まる場合はBasic認証をかける
 	if strings.HasPrefix(r.URL.Path, "/admin") {
 		username, password, ok := r.BasicAuth()
