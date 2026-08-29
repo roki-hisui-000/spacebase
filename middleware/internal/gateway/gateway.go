@@ -137,6 +137,10 @@ func (g *SyncGateway) handleRegister(w http.ResponseWriter, r *http.Request, ctx
 
 	// メールアドレスの重複チェック
 	if g.sp != nil {
+		// NOTE: g.sp.Keys は内部で KEYS コマンド（ワイルドカードによる全キー検索）を呼び出すため、
+		// データ量が多い場合に Valkey/Redis のブロッキング（パフォーマンス低下）を引き起こすリスクがあります。
+		// 将来的には space.Space インターフェースを拡張し、カーソルベースのイテレーションをサポートする
+		// Scan メソッドに移行することを検討してください。
 		keys, err := g.sp.Keys(ctx, "user:*:profile")
 		if err == nil {
 			for _, key := range keys {
@@ -184,6 +188,10 @@ func (g *SyncGateway) handleGetProfiles(w http.ResponseWriter, r *http.Request, 
 	}
 
 	// "user:*:profile" パターンに一致するキー一覧を検索
+	// NOTE: g.sp.Keys は内部で KEYS コマンド（ワイルドカードによる全キー検索）を呼び出すため、
+	// データ量が多い場合に Valkey/Redis のブロッキング（パフォーマンス低下）を引き起こすリスクがあります。
+	// 将来的には space.Space インターフェースを拡張し、カーソルベースのイテレーションをサポートする
+	// Scan メソッドに移行することを検討してください。
 	keys, err := g.sp.Keys(ctx, "user:*:profile")
 	if err != nil {
 		http.Error(w, "Failed to retrieve keys: "+err.Error(), http.StatusInternalServerError)
@@ -314,8 +322,12 @@ func (g *SyncGateway) handleGetDashboard(w http.ResponseWriter, r *http.Request,
 
 		// 初回のデータを即時に送信
 		db, err := g.fetchDashboardData(ctx)
-		if err == nil {
-			if data, err := json.Marshal(db); err == nil {
+		if err != nil {
+			log.Printf("[SSE Error] Failed to fetch initial dashboard data: %v", err)
+		} else {
+			if data, err := json.Marshal(db); err != nil {
+				log.Printf("[SSE Error] Failed to marshal initial dashboard data: %v", err)
+			} else {
 				_, _ = w.Write([]byte("data: " + string(data) + "\n\n"))
 				flusher.Flush()
 			}
@@ -331,10 +343,12 @@ func (g *SyncGateway) handleGetDashboard(w http.ResponseWriter, r *http.Request,
 			case <-ticker.C:
 				db, err := g.fetchDashboardData(ctx)
 				if err != nil {
+					log.Printf("[SSE Error] Failed to fetch dashboard data: %v", err)
 					continue
 				}
 				data, err := json.Marshal(db)
 				if err != nil {
+					log.Printf("[SSE Error] Failed to marshal dashboard data: %v", err)
 					continue
 				}
 				_, _ = w.Write([]byte("data: " + string(data) + "\n\n"))
@@ -378,6 +392,10 @@ func (g *SyncGateway) fetchDashboardData(ctx context.Context) (sharedmodel.Dashb
 	}
 	db.Metrics = metricsVal
 
+	// NOTE: g.sp.Keys は内部で KEYS コマンド（ワイルドカードによる全キー検索）を呼び出すため、
+	// データ量が多い場合に Valkey/Redis のブロッキング（パフォーマンス低下）を引き起こすリスクがあります。
+	// 将来的には space.Space インターフェースを拡張し、カーソルベースのイテレーションをサポートする
+	// Scan メソッドに移行することを検討してください。
 	keys, err := g.sp.Keys(ctx, "order:*")
 	if err != nil {
 		return db, err
