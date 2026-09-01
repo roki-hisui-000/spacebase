@@ -5,8 +5,10 @@
 # 環境変数のデフォルト設定（mise未ロード時などのフォールバック用）
 VALKEY_PORT ?= 6379
 VALKEY_HOST ?= 127.0.0.1
+VALKEY_DATA_DIR ?= ./data/valkey
 export VALKEY_PORT
 export VALKEY_HOST
+export VALKEY_DATA_DIR
 
 # デフォルトターゲット：ヘルプ表示
 help:

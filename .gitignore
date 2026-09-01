@@ -12,3 +12,9 @@ build.log
 
 # Temporary / CLI leftovers
 -cli ping
+
+# Local environment configuration
+.env
+
+# Valkey Persistence
+/data/

@@ -7,6 +7,9 @@ services:
     ports:
       - "6379:6379"
     restart: always
+    command: valkey-server --save 60 1 --appendonly yes
+    volumes:
+      - ${VALKEY_DATA_DIR:-./data/valkey}:/data
 
   processing:
     build:
