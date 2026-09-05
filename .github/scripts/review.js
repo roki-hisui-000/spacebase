@@ -2,7 +2,7 @@ const fs = require('fs');
 
 // 定数定義
 const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
-const DEFAULT_GEMINI_MODEL = 'gemini-1.5-flash';
+const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 
 // ファイルパスおよびディレクトリ名の定数化
 const DIFF_FILE_NAME = 'diff.txt';
@@ -108,44 +108,7 @@ ${docRules}
 ${diff}
 `;
 
-  // 利用可能なモデルの一覧を取得し、自動的に最適なモデルを判定する（堅牢性の担保）
-  let modelName = DEFAULT_GEMINI_MODEL; // デフォルトフォールバック
-  try {
-    const modelsUrl = `${GEMINI_API_BASE_URL}/models?key=${apiKey}`;
-    const modelsRes = await fetch(modelsUrl);
-    if (modelsRes.ok) {
-      const modelsData = await modelsRes.json();
-      const models = modelsData.models || [];
-      console.log("Detected available models:", models.map(m => m.name));
-
-      // 'generateContent' をサポートする flash モデルを探す（2.5や1.5等、最新順にマッチしやすいようフィルタ）
-      const bestModel = models.find(m => 
-        m.name.includes('gemini') && 
-        m.name.includes('flash') && 
-        m.supportedGenerationMethods?.includes('generateContent')
-      );
-
-      if (bestModel) {
-        modelName = bestModel.name.replace('models/', '');
-        console.log(`Auto-selected best model: ${modelName}`);
-      } else {
-        // flashが見つからない場合は、generateContentをサポートする任意のgeminiモデル
-        const fallbackModel = models.find(m => 
-          m.name.includes('gemini') && 
-          m.supportedGenerationMethods?.includes('generateContent')
-        );
-        if (fallbackModel) {
-          modelName = fallbackModel.name.replace('models/', '');
-          console.log(`Auto-selected fallback model: ${modelName}`);
-        }
-      }
-    } else {
-      console.warn(`Failed to list models (status ${modelsRes.status}), using default: ${modelName}`);
-    }
-  } catch (err) {
-    console.warn("Error while auto-detecting models, using default:", err);
-  }
-
+  const modelName = DEFAULT_GEMINI_MODEL;
   const url = `${GEMINI_API_BASE_URL}/models/${modelName}:generateContent?key=${apiKey}`;
   console.log(`Sending review request to Gemini model: ${modelName}`);
   const response = await fetch(url, {
