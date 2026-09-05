@@ -95,9 +95,8 @@ valkey-cli:
 	fi
 
 # 単体テストの実行
-test: # すべてのGoパッケージのテストを実行
-	go test -v ./...
-
+test:
+	go test -v $$(find . -path "./data" -prune -o -name "*.go" -exec dirname {} + | sort -u)
 
 # シミュレータのキック（送信時にシミュレータのみを自動的・オンデマンドでビルドしてキックします）
 # 例: make run-simulator COUNT=10 INTERVAL=500
