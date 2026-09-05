@@ -96,7 +96,7 @@ valkey-cli:
 
 # 単体テストの実行
 test: # すべてのGoパッケージのテストを実行
-	go test -v ./...
+	go test -v $$(find . -type d \( -path "./data" -o -path "./.git" \) -prune -o -name "*.go" -exec dirname {} \; | sort -u | uniq)
 
 
 # シミュレータのキック（送信時にシミュレータのみを自動的・オンデマンドでビルドしてキックします）

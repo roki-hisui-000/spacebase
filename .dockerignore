@@ -1,0 +1,26 @@
+# Ignore build persistence data to avoid permission issues
+data/
+
+# Version control
+.git
+.gitignore
+
+# Documentation
+docs/
+*.md
+
+# Local configuration files
+.env
+.env.*
+
+# Temporary / Log files
+*.log
+build.log
+.cache/
+
+# Local build binaries and artifacts
+processing
+server
+bin/
+-cli
+ping
