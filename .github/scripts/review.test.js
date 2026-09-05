@@ -37,7 +37,7 @@ test.describe('review.js', () => {
 
     assert.strictEqual(mockConsoleLog.mock.calls.length, 1);
     assert.strictEqual(mockConsoleLog.mock.calls[0].arguments[0], "No diff found");
-    assert.strictEqual(mockExit.mock.calls.length, 0); // スキップなので正常終了（exitは呼ばれない）
+    assert.strictEqual(mockExit.mock.calls.length, 0);
   });
 
   test.it('設定ファイルやドキュメントのみの変更の場合、処理をスキップする', async (t) => {
@@ -95,24 +95,13 @@ index abcdefg..1234567 100644
     const mockWriteFileSync = t.mock.method(fs, 'writeFileSync', () => {});
     const mockConsoleLog = t.mock.method(console, 'log', () => {});
 
-    let fetchCallCount = 0;
     const mockFetch = t.mock.method(global, 'fetch', async (url) => {
-      fetchCallCount++;
-      if (fetchCallCount === 1) {
-        return {
-          ok: true,
-          json: async () => ({
-            models: [{ name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] }]
-          })
-        };
-      } else {
-        return {
-          ok: true,
-          json: async () => ({
-            candidates: [{ content: { parts: [{ text: 'Mocked Gemini Review Comment' }] } }]
-          })
-        };
-      }
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [{ content: { parts: [{ text: 'Mocked Gemini Review Comment' }] } }]
+        })
+      };
     });
 
     await run();
@@ -120,7 +109,6 @@ index abcdefg..1234567 100644
     assert.strictEqual(mockWriteFileSync.mock.calls.length, 1);
     assert.strictEqual(mockConsoleLog.mock.calls.some(c => c.arguments[0] === "Review generated successfully"), true);
   });
-
   test.it('docs/spec などの設計書ドキュメント変更が含まれる場合、処理をスキップしない', async (t) => {
     const mockExistsSync = t.mock.method(fs, 'existsSync', () => true);
     const mockReadFileSync = t.mock.method(fs, 'readFileSync', (path) => {
@@ -138,24 +126,13 @@ index abcdefg..1234567 100644
     const mockWriteFileSync = t.mock.method(fs, 'writeFileSync', () => {});
     const mockConsoleLog = t.mock.method(console, 'log', () => {});
 
-    let fetchCallCount = 0;
     const mockFetch = t.mock.method(global, 'fetch', async (url) => {
-      fetchCallCount++;
-      if (fetchCallCount === 1) {
-        return {
-          ok: true,
-          json: async () => ({
-            models: [{ name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] }]
-          })
-        };
-      } else {
-        return {
-          ok: true,
-          json: async () => ({
-            candidates: [{ content: { parts: [{ text: 'Mocked Gemini Review Comment for Spec' }] } }]
-          })
-        };
-      }
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [{ content: { parts: [{ text: 'Mocked Gemini Review Comment for Spec' }] } }]
+        })
+      };
     });
 
     await run();
@@ -164,7 +141,7 @@ index abcdefg..1234567 100644
     assert.strictEqual(mockConsoleLog.mock.calls.some(c => c.arguments[0] === "Review generated successfully"), true);
   });
 
-  test.it('正常にモデルを自動選択してレビューを生成・ファイルに書き込む', async (t) => {
+  test.it('正常に指定モデル（gemini-3.8-flash）を使ってレビューを生成・ファイルに書き込む', async (t) => {
     const mockExistsSync = t.mock.method(fs, 'existsSync', () => true);
     const mockReadFileSync = t.mock.method(fs, 'readFileSync', (path) => {
       if (path === 'diff.txt') return 'dummy diff';
@@ -176,32 +153,18 @@ index abcdefg..1234567 100644
     const mockConsoleLog = t.mock.method(console, 'log', () => {});
 
     // fetch のモック化
-    let fetchCallCount = 0;
     const mockFetch = t.mock.method(global, 'fetch', async (url) => {
-      fetchCallCount++;
-      if (fetchCallCount === 1) {
-        // models API のレスポンス
-        return {
-          ok: true,
-          json: async () => ({
-            models: [
-              { name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] }
-            ]
-          })
-        };
-      } else {
-        // generateContent API のレスポンス
-        return {
-          ok: true,
-          json: async () => ({
-            candidates: [{
-              content: {
-                parts: [{ text: 'Mocked Gemini Review Comment' }]
-              }
-            }]
-          })
-        };
-      }
+      assert.ok(url.includes('models/gemini-3.8-flash:generateContent'), 'Should request correct model endpoint');
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [{
+            content: {
+              parts: [{ text: 'Mocked Gemini Review Comment' }]
+            }
+          }]
+        })
+      };
     });
 
     await run();
@@ -212,40 +175,6 @@ index abcdefg..1234567 100644
     assert.strictEqual(mockConsoleLog.mock.calls.some(c => c.arguments[0] === "Review generated successfully"), true);
   });
 
-  test.it('models API呼び出しが失敗した場合、警告ログを出力しデフォルトモデルを使用する', async (t) => {
-    const mockExistsSync = t.mock.method(fs, 'existsSync', () => true);
-    const mockReadFileSync = t.mock.method(fs, 'readFileSync', () => 'dummy content');
-    const mockReaddirSync = t.mock.method(fs, 'readdirSync', () => []);
-    const mockWriteFileSync = t.mock.method(fs, 'writeFileSync', () => {});
-    const mockConsoleWarn = t.mock.method(console, 'warn', () => {});
-    const mockConsoleLog = t.mock.method(console, 'log', () => {});
-
-    let fetchCallCount = 0;
-    const mockFetch = t.mock.method(global, 'fetch', async (url) => {
-      fetchCallCount++;
-      if (fetchCallCount === 1) {
-        // models API のレスポンスを失敗させる
-        return { ok: false, status: 500, text: async () => 'Internal Server Error' };
-      } else {
-        // generateContent API のレスポンス（デフォルトモデルが使われることを想定）
-        assert.ok(url.includes('gemini-1.5-flash'), 'Should use default model if models API fails');
-        return {
-          ok: true,
-          json: async () => ({
-            candidates: [{ content: { parts: [{ text: 'Mocked Gemini Review Comment with default model' }] } }]
-          })
-        };
-      }
-    });
-
-    await run();
-
-    assert.strictEqual(mockConsoleWarn.mock.calls.length, 1);
-    assert.match(mockConsoleWarn.mock.calls[0].arguments[0], /Failed to list models/);
-    assert.strictEqual(mockWriteFileSync.mock.calls[0].arguments[1], 'Mocked Gemini Review Comment with default model');
-    assert.strictEqual(mockConsoleLog.mock.calls.some(c => c.arguments[0].includes("Sending review request to Gemini model: gemini-1.5-flash")), true);
-  });
-
   test.it('generateContent API呼び出しが失敗した場合、エラーを出力して終了する', async (t) => {
     const mockExistsSync = t.mock.method(fs, 'existsSync', () => true);
     const mockReadFileSync = t.mock.method(fs, 'readFileSync', () => 'dummy content');
@@ -254,19 +183,8 @@ index abcdefg..1234567 100644
     const mockExit = t.mock.method(process, 'exit', () => {});
     t.mock.method(console, 'log', () => {}); // 不要なログ出力を抑制
 
-    let fetchCallCount = 0;
     const mockFetch = t.mock.method(global, 'fetch', async (url) => {
-      fetchCallCount++;
-      if (fetchCallCount === 1) {
-        // models API のレスポンス (成功)
-        return {
-          ok: true,
-          json: async () => ({ models: [{ name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] }] })
-        };
-      } else {
-        // generateContent API のレスポンスを失敗させる
-        return { ok: false, status: 400, text: async () => 'Bad Request' };
-      }
+      return { ok: false, status: 400, text: async () => 'Bad Request' };
     });
 
     await run();
@@ -285,19 +203,8 @@ index abcdefg..1234567 100644
     const mockExit = t.mock.method(process, 'exit', () => {});
     t.mock.method(console, 'log', () => {}); // 不要なログ出力を抑制
 
-    let fetchCallCount = 0;
     const mockFetch = t.mock.method(global, 'fetch', async (url) => {
-      fetchCallCount++;
-      if (fetchCallCount === 1) {
-        // models API のレスポンス (成功)
-        return {
-          ok: true,
-          json: async () => ({ models: [{ name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] }] })
-        };
-      } else {
-        // generateContent API のレスポンスが不正 (candidatesがない)
-        return { ok: true, json: async () => ({ /* 空オブジェクトまたは不正な構造 */ }) };
-      }
+      return { ok: true, json: async () => ({ /* 空オブジェクトまたは不正な構造 */ }) };
     });
 
     await run();
@@ -323,23 +230,16 @@ index abcdefg..1234567 100644
     
     // fetch のモック
     const mockFetch = t.mock.method(global, 'fetch', async (url, options) => {
-      if (url.includes('/models?')) {
-        return {
-          ok: true,
-          json: async () => ({ models: [{ name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] }] })
-        };
-      } else {
-        const body = JSON.parse(options.body);
-        const prompt = body.contents[0].parts[0].text;
-        // プロンプトにdocs/rulesに関する内容が含まれていないことをアサート
-        assert.ok(!prompt.includes('--- architecture.md ---'), 'Prompt should not contain docRules content');
-        return {
-          ok: true,
-          json: async () => ({
-            candidates: [{ content: { parts: [{ text: 'Mocked Gemini Review Comment with no docRules' }] } }]
-          })
-        };
-      }
+      const body = JSON.parse(options.body);
+      const prompt = body.contents[0].parts[0].text;
+      // プロンプトにdocs/rulesに関する内容が含まれていないことをアサート
+      assert.ok(!prompt.includes('--- architecture.md ---'), 'Prompt should not contain docRules content');
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [{ content: { parts: [{ text: 'Mocked Gemini Review Comment with no docRules' }] } }]
+        })
+      };
     });
 
     const mockWriteFileSync = t.mock.method(fs, 'writeFileSync', () => {});
@@ -352,4 +252,5 @@ index abcdefg..1234567 100644
     assert.strictEqual(mockWriteFileSync.mock.calls[0].arguments[1], 'Mocked Gemini Review Comment with no docRules');
     assert.strictEqual(mockConsoleLog.mock.calls.some(c => c.arguments[0] === "Review generated successfully"), true);
   });
+
 });
