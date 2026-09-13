@@ -45,7 +45,7 @@
 
 ## CI/CDの影響
 
-1. ローカルでビルドしたDockerのイメージをGCPのコンテナレジスト（Artifact Registry）にプッシュするパイプライン（GCP Cloud Build）を構築する必要がある
+1. ローカルでビルドしたDockerのイメージをGCPのコンテナレジストリ（Artifact Registry）にプッシュするパイプライン（GCP Cloud Build）を構築する必要がある
 	- イメージ作成時には実行基盤のCPU（例：arm64 / amd64）に合わせる必要がある
 2. コンテナの稼働状況を監視するためヘルスチェックを導入する
 
@@ -147,5 +147,5 @@
 ## 補足
 
 - Dockerイメージはローカル/GCPで共通したものを利用する
-	- 環境別の設定ファイルはローカルの場合は".env"、GCPではSecret Managetの値を参照する
+	- 環境別の設定ファイルはローカルの場合は".env"、GCPではSecret Managerの値を参照する
 
