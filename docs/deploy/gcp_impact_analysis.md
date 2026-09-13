@@ -96,3 +96,8 @@
    - GCP上にSecretを作成し、各アプリケーションの接続情報を安全に供給できるようにする。
 4. **CI/CD・Artifact Registryの構築**:
    - `Dockerfile` のビルド・テスト・プッシュを自動化するパイプラインを構築する。
+
+---
+
+## 結論
+Cloud Run vs GKEについて記載されていますが、今回はCloud Runを利用します。

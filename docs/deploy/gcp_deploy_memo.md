@@ -5,35 +5,35 @@
 
 ## 現在構成（ローカル向け）
 
-- Middlerware
+- Middleware
 	- 外部に唯一の公開
 	- Process Unitを呼び出して処理を委譲
 	- データベースにアクセス
 - Processing Unit
 	- ビジネスロジックを担当
-	- データベースにアスセスする際はMiddlewareを呼び出す
+	- データベースにアクセスする際はMiddlewareを呼び出す
 - データベース
 	- valkeyを使用
 
 ### ポート番号について
 
 - `8080`：外部→Middleware
-- `50051`：Mddleware→Process Unit（処理の委譲）
-- `50052`：Process Unit→Mddleware（主にデータベースへのアクセス呼び出し）
-- `6379`：Mddleware→データベース
+- `50051`：Middleware→Processing Unit（処理の委譲）
+- `50052`：Processing Unit→Middleware（主にデータベースへのアクセス呼び出し）
+- `6379`：Middleware→データベース
 
 ## デプロイにおける課題
 
 ### 通信経路
 
 1. **Middleware**はローカル環境で`8080`と`50052`を利用している。Cloud runでは単一ポートしか公開できない。
-2. **Middleware**と**Porcess Unit**はDocker composeのブリッジネットワークを利用して`<コンテナ名>:<ポート>`で通信しているが、<br>
+2. **Middleware**と**Processing Unit**はDocker composeのブリッジネットワークを利用して`<コンテナ名>:<ポート>`で通信しているが、<br>
 	Cloud Runではエンドポイントを独立したURLで通信する必要がある。
 
 ### データベース
 
 1. データベース（Valkey）は`/data/valkey`配下に永続化したデータを保存している。これは、データベースが停止しても永続化したデータが消去されない措置です。<br>
-   GCPで同様のふるまいをするには、GCP古間マネージドRedisサービスを利用する必要がある。
+   GCPで同様のふるまいをするには、GCPフルマネージドRedisサービスを利用する必要がある。
 
 ### セキュリティ
 
@@ -45,7 +45,7 @@
 
 ## CI/CDの影響
 
-1. ローカルでビルドしたDockerのイメージをGCPのレジストコンテナ（Artifact Registry）にプッシュするパイプライン（GCP Cloud Build）を構築する必要がある
+1. ローカルでビルドしたDockerのイメージをGCPのコンテナレジスト（Artifact Registry）にプッシュするパイプライン（GCP Cloud Build）を構築する必要がある
 	- イメージ作成時には実行基盤のCPU（例：arm64 / amd64）に合わせる必要がある
 2. コンテナの稼働状況を監視するためヘルスチェックを導入する
 
@@ -55,9 +55,9 @@
 
 1. **Middleware**を以下の2つのサービスに分ける
 	- HTTPゲートウェイ：外部からのリクエストを受け付ける
-	- gRPCゲートウェイ：主にデータベースにアクセスするためにProcess Unitから呼ばれる
+	- gRPCゲートウェイ：主にデータベースにアクセスするためにProcessing Unitから呼ばれる
 
-2. **Middleware**と**Process Unit**間の通信を確立するため通信先環境変数を用意する
+2. **Middleware**と**Processing Unit**間の通信を確立するため通信先環境変数を用意する
 	- 通信先環境変数はcloud runのコンテナ環境変数（`--set-env-vars`で設定）
 	- 設定例：
 		- Middleware 側の環境変数: `PROCESSING_UNIT_ADDR=processing-unit-xxxx-an.a.run.app:443`
@@ -125,7 +125,7 @@
 		```
 		2. gRPCサービスの手順
 			- ヘルスチェック用のgRPCライブラリ（`google.golang.org/grpc/health`）を導入する
-				- 以下の実装を追加してらヘルスチェックを有効にする
+				- 以下の実装を追加してヘルスチェックを有効にする
 					```
 					// ★ ここを追加：標準ヘルスチェックサービスを登録
 					healthServer := health.NewServer()
@@ -146,6 +146,6 @@
 
 ## 補足
 
-- Dokcerイメージはローカル/GCPで共通したものを利用する
-	- 環境別お設定ファイルはローカルの場合は".env"、GCPではSecret Managetの値を参照する
+- Dockerイメージはローカル/GCPで共通したものを利用する
+	- 環境別の設定ファイルはローカルの場合は".env"、GCPではSecret Managetの値を参照する
 
